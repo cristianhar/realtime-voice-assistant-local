@@ -374,6 +374,8 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                     "turn_id": turn_id,
                     "tool": tool_name,
                     "display_text": display_text,
+                    "display_response": display_text,
+                    "spoken_response": spoken_text,
                     "data": tool_result.get("data", {})
                 })
 
@@ -393,10 +395,17 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                         "text": spoken_text
                     })
 
+                # Proyectar el texto en la burbuja de la IA en pantalla
+                await websocket.send_json({
+                    "type": "ai_chunk",
+                    "turn_id": turn_id,
+                    "delta": spoken_text
+                })
+
                 await websocket.send_json({
                     "type": "ai_done",
                     "turn_id": turn_id,
-                    "full_text": display_text
+                    "full_text": display_text or spoken_text
                 })
 
                 database.save_message(

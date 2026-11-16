@@ -215,6 +215,12 @@ function handleServerMessage(data) {
             break;
 
         case "ai_done":
+            if (data.turn_id && data.full_text) {
+                const aiTextEl = document.getElementById(`ai-text-${data.turn_id}`);
+                if (aiTextEl && !aiTextEl.innerText.trim()) {
+                    aiTextEl.innerText = data.full_text;
+                }
+            }
             if (turnStartTime > 0) {
                 const totalSec = ((Date.now() - turnStartTime) / 1000).toFixed(2);
                 if (metricTotal) metricTotal.innerText = `${totalSec} s`;

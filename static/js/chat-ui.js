@@ -228,6 +228,17 @@ class ChatUIManager {
 
     handleToolExecuted(data) {
         if (!this.chatMessages) return;
+
+        const textContent = data.display_response || data.display_text || data.spoken_response || "";
+
+        // Si existe la burbuja del asistente para este turno, proyectar el texto en ella
+        if (data.turn_id) {
+            const aiTextEl = document.getElementById(`ai-text-${data.turn_id}`);
+            if (aiTextEl) {
+                aiTextEl.innerText = textContent;
+            }
+        }
+
         const toolCard = document.createElement("div");
         toolCard.className = "tool-badge-card";
         const icon = data.tool === "get_current_time" ? "🕒" :
@@ -240,7 +251,7 @@ class ChatUIManager {
                 <span class="tool-icon">${icon}</span>
                 <span class="tool-name">${data.tool.replace(/_/g, " ").toUpperCase()}</span>
             </div>
-            <div class="tool-badge-body">${this.escapeHtml(data.display_response || data.spoken_response)}</div>
+            <div class="tool-badge-body">${this.escapeHtml(textContent)}</div>
         `;
         this.chatMessages.appendChild(toolCard);
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
