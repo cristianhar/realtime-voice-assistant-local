@@ -93,17 +93,20 @@ flowchart TD
 - [x] **Eliminación Total de 'Frenos' y Vacíos de Audio**: Encadenamiento con precarga y colchón de buffer de +2.8 segundos de anticipación (100% de transiciones continuas sin silencios).
 - [x] **Filtro Anti-Respiración y Ruido Ambiental (VAD Slider)**: Control de sensibilidad y visualizador con línea de umbral roja.
 
-### Fase 5: Memoria Persistente, RAG Contextual y Herramientas (Tool Calling)
+### Fase 5: Memoria Persistente, RAG Híbrido FTS5, Perfil de Usuario e i18n
 - [x] **Base de datos SQLite local (`database.py`)**: Persistencia estructurada de sesiones, mensajes, traducciones, vocabulario aprendido y notas de voz (`voice_assistant.db`).
-- [x] **RAG Ultraligero y Memoria a Largo Plazo**: Inyección dinámica en el prompt del sistema (`get_memory_context_string()`), permitiendo que el LLM recuerde notas, palabras y contexto conversacional entre días y sesiones.
+- [x] **RAG Híbrido con Búsqueda FTS5 (`notes_fts`, `messages_fts`)**: Búsqueda por palabras clave e indexación de notas y turnos para recuperación semántica instantánea.
+- [x] **Perfil de Usuario Persistente (`user_profile`)**: Memoria de identidad (`Cristian Arboleda`), nivel de inglés e intereses para personalizar el tono y respuestas de la IA.
+- [x] **Inyección Contextual Inteligente (`get_smart_memory_context`)**: RAG selectivo que inyecta información relevante según el tema de conversación.
+- [x] **Soporte Multiidioma en UI (i18n)**: Selector interactivo de idioma en cabecera (`ES / EN`) con persistencia en `localStorage`, traduciendo paneles, controles, métricas y tooltips.
 - [x] **Tool Calling Local por Voz con Latencia Cero (`tools.py`)**:
   - Consulta de hora y fecha actual en español e inglés ("¿Qué hora es?", "What time is it?").
   - Creación de notas de voz ("Toma nota de...", "Recuérdame...", "Take a note...").
   - Consulta y lectura de notas guardadas ("¿Cuáles son mis notas?", "Show my notes").
   - Consulta de vocabulario registrado ("¿Qué palabras aprendí?", "What vocabulary did I learn?").
-- [x] **Endpoints REST para Historial y Notas**: `/api/history`, `/api/vocabulary`, `/api/notes`.
+- [x] **Endpoints REST para Historial, Notas y Perfil**: `/api/history`, `/api/vocabulary`, `/api/notes`, `/api/profile`.
 - [x] **Interfaz Visual de Notas y Vocabulario**: Panel lateral "📌 Notas Rápidas por Voz" y sincronización automática tras cada ejecución de herramienta.
-- [x] **Suite de Pruebas Unitarias de Herramientas y Memoria**: `tests/test_tools_memory.py` (10/10 tests pasando).
+- [x] **Suite de Pruebas Unitarias de Herramientas y Memoria**: `tests/test_tools_memory.py` y `tests/run_all_tests.py` (28/28 tests pasando).
 
 ---
 

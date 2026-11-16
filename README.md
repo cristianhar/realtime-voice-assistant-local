@@ -19,7 +19,8 @@ Permite mantener llamadas de voz continuas con **manos libres**, transcripción 
 * 🎚️ **Filtro Anti-Respiración y Ruido Ambiental:** Control de sensibilidad ajustable en interfaz (Baja, Media, Alta) con indicador visual de umbral en tiempo real para evitar que respiraciones o ventiladores de laptop activen el micrófono por error.
 * ⚡ **Transcripción Parcial en Vivo (*Live Streaming STT*):** Las palabras que dices se proyectan en pantalla en tiempo real con una latencia de apenas **~26 ms** gracias a Faster-Whisper en GPU CUDA.
 * 💾 **Memoria Persistente Local (SQLite):** Historial completo de conversaciones, sesiones, traducciones y métricas guardadas automáticamente en `voice_assistant.db` sin enviar ningún dato a la nube.
-* 🧠 **RAG Contextual y Memoria a Largo Plazo:** Inyección automática de notas y vocabulario previo en el contexto del modelo, permitiendo que la IA recuerde datos entre distintas sesiones y responda preguntas sobre notas pasadas.
+* 🧠 **RAG Híbrido con FTS5 y Perfil de Usuario:** Búsqueda semántica por palabras clave en milisegundos (`notes_fts`, `messages_fts`) y memoria persistente del usuario (`Cristian Arboleda`), adaptando respuestas según tus intereses y nivel.
+* 🌐 **Interfaz con Soporte Multiidioma Completo (UI i18n):** Selector interactivo en la cabecera para alternar toda la interfaz gráfica entre **Español** e **English**, con persistencia local en el navegador.
 * 🔧 **Tool Calling por Voz con Latencia Cero:** Ejecución directa y respuesta por voz instantánea (< 250 ms TTFA sin esperar al LLM):
   * 🕒 *Hora y fecha:* `"¿Qué hora es?"`, `"What time is it?"`
   * 📌 *Guardar notas:* `"Toma nota de comprar café"`, `"Recuérdame llamar al médico"`, `"Take a note to buy headphones"`
