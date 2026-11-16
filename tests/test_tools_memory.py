@@ -1,0 +1,88 @@
+import os
+import unittest
+import database
+import tools
+
+class TestToolsAndMemory(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        database.init_db()
+        database.save_voice_note("Comprar leche y pan", "Nota de prueba")
+        database.save_vocabulary_or_correction("I have 20 years", "I am 20 years old", "En inglés la edad se dice con to be")
+
+    def test_time_tool_es(self):
+        res = tools.detect_and_execute_tool("¿Qué hora es?", lang_mode="es")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["tool"], "get_current_time")
+        self.assertIn("Son las", res["spoken_response"])
+        self.assertEqual(res["lang"], "es")
+
+    def test_time_tool_en(self):
+        res = tools.detect_and_execute_tool("Hey, what time is it?", lang_mode="en")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["tool"], "get_current_time")
+        self.assertIn("It is", res["spoken_response"])
+        self.assertEqual(res["lang"], "en")
+
+    def test_save_voice_note_es(self):
+        res = tools.detect_and_execute_tool("Toma nota de comprar café y pan", lang_mode="es")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["tool"], "save_voice_note")
+        self.assertIn("comprar café y pan", res["spoken_response"])
+        self.assertIn("note_id", res["data"])
+
+    def test_save_voice_note_en(self):
+        res = tools.detect_and_execute_tool("Take a note buy new headphones", lang_mode="en")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["tool"], "save_voice_note")
+        self.assertIn("buy new headphones", res["spoken_response"])
+
+    def test_list_notes(self):
+        res = tools.detect_and_execute_tool("¿Qué notas tengo?", lang_mode="es")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["tool"], "list_voice_notes")
+        self.assertIn("notas", res["spoken_response"])
+
+    def test_memory_context_string(self):
+        context = database.get_memory_context_string()
+        self.assertIsInstance(context, str)
+        self.assertIn("NOTAS Y RECORDATORIOS", context)
+
+    def test_list_vocabulary_es(self):
+        res = tools.detect_and_execute_tool("¿Qué vocabulario tengo?", lang_mode="es")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["tool"], "list_vocabulary")
+        self.assertIn("frases", res["spoken_response"])
+
+    def test_list_vocabulary_en(self):
+        res = tools.detect_and_execute_tool("What vocabulary did I learn?", lang_mode="en")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["tool"], "list_vocabulary")
+        self.assertIn("phrases", res["spoken_response"].lower())
+        self.assertIn("vocabulary", res["display_response"].lower())
+
+    def test_database_persistence_cycle(self):
+        sess_id = f"test-sess-{database.time.time()}"
+        database.create_or_get_session(sess_id, mode="en", voice="af_sarah")
+        
+        # Guardar turnos
+        database.save_message(sess_id, "user", "Hello there", turn_id="t1", stt_ms=45)
+        database.save_message(sess_id, "assistant", "Hello! How are you?", turn_id="t1", ttfa_ms=210)
+        database.update_message_translation("t1", "user", "Hola a todos")
+        
+        # Recuperar mensajes
+        messages = database.get_recent_messages(limit=5)
+        self.assertTrue(len(messages) >= 2)
+        
+        # Recuperar notas
+        note_id = database.save_voice_note("Revisar código fuente", "Nota de código")
+        self.assertIsInstance(note_id, int)
+        notes = database.get_recent_notes(limit=5)
+        self.assertTrue(any(n["content"] == "Revisar código fuente" for n in notes))
+
+    def test_no_tool_fallback_to_llm(self):
+        res = tools.detect_and_execute_tool("Hola, ¿cómo estás hoy amigo?", lang_mode="es")
+        self.assertIsNone(res)
+
+if __name__ == "__main__":
+    unittest.main()
