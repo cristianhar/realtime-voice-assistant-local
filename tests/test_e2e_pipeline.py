@@ -161,7 +161,11 @@ class TestEndToEndPipeline(unittest.TestCase):
             self.assertIn("welcome_title", locales_data[lang])
             self.assertIn("label_personality", locales_data[lang])
 
-        js_files = ["i18n.js", "visualizer.js", "wav-encoder.js"]
+        js_files = [
+            "i18n.js", "visualizer.js", "wav-encoder.js",
+            "audio-player.js", "audio-recorder.js", "chat-ui.js",
+            "notes-drawer.js", "telemetry.js"
+        ]
         for js in js_files:
             js_path = os.path.join(STATIC_DIR, "js", js)
             self.assertTrue(os.path.isfile(js_path), f"El módulo {js} debe existir en static/js/")

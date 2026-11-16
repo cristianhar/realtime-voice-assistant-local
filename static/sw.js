@@ -1,10 +1,17 @@
 // Realtime Voice Assistant - Progressive Web App (PWA) Service Worker
-const CACHE_NAME = 'voicechat-pwa-v1';
+const CACHE_NAME = 'voicechat-pwa-v2';
 const CORE_ASSETS = [
   '/',
   '/static/style.css',
   '/static/app.js',
   '/static/js/i18n.js',
+  '/static/js/wav-encoder.js',
+  '/static/js/visualizer.js',
+  '/static/js/audio-player.js',
+  '/static/js/audio-recorder.js',
+  '/static/js/chat-ui.js',
+  '/static/js/notes-drawer.js',
+  '/static/js/telemetry.js',
   '/static/locales/locales.json',
   '/static/manifest.json'
 ];
