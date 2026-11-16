@@ -98,6 +98,18 @@ async def api_save_note(note_data: dict):
     note_id = database.save_voice_note(content, title)
     return {"status": "ok", "note_id": note_id}
 
+@app.get("/api/profile")
+async def api_get_profile():
+    """Retorna el perfil y preferencias del usuario."""
+    return database.get_user_profile()
+
+@app.post("/api/profile")
+async def api_set_profile(profile_data: dict):
+    """Actualiza una propiedad en el perfil del usuario."""
+    for k, v in profile_data.items():
+        database.set_user_profile_value(k, str(v))
+    return {"status": "ok", "profile": database.get_user_profile()}
+
 # -----------------------------------------------------------------------------
 # Orquestador WebSocket Full-Duplex en Tiempo Real
 # -----------------------------------------------------------------------------
@@ -312,8 +324,8 @@ async def websocket_chat_endpoint(websocket: WebSocket):
             if len(conversation_history) > 9:
                 conversation_history = [conversation_history[0]] + conversation_history[-8:]
 
-            # Inyectar memoria persistente ultraligera (RAG de notas y vocabulario)
-            memory_block = database.get_memory_context_string(limit_notes=4, limit_vocab=4)
+            # Inyectar memoria persistente ultraligera (RAG híbrido de notas, perfil y FTS5)
+            memory_block = database.get_smart_memory_context(user_text)
             current_system_prompt = PROMPTS[current_mode] + (f"\n{memory_block}" if memory_block else "")
 
             messages_for_llm = [{"role": "system", "content": current_system_prompt}] + [

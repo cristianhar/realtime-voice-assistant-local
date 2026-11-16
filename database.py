@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import re
 import json
 import time
 from typing import List, Dict, Optional, Any
@@ -67,6 +68,43 @@ def init_db():
             )
         """)
 
+        # 5. Tabla de perfil y preferencias del usuario (Memoria de Usuario)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_profile (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # 6. Tablas virtuales FTS5 para búsqueda semántica / texto completo
+        cursor.execute("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
+                note_id UNINDEXED,
+                title,
+                content
+            )
+        """)
+        cursor.execute("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
+                msg_id UNINDEXED,
+                role UNINDEXED,
+                content
+            )
+        """)
+
+        # Inicializar perfil por defecto de Cristian Arboleda si no existe
+        default_profile = {
+            "name": "Cristian Arboleda",
+            "preferred_language": "es",
+            "english_level": "Intermedio (B2)",
+            "interests": "Programación, Inteligencia Artificial, GPUs NVIDIA, Robótica"
+        }
+        for k, v in default_profile.items():
+            cursor.execute("""
+                INSERT OR IGNORE INTO user_profile (key, value) VALUES (?, ?)
+            """, (k, v))
+
         conn.commit()
 
 def create_or_get_session(session_id: str, mode: str = "en", voice: str = "af_sarah") -> str:
@@ -91,9 +129,17 @@ def save_message(session_id: str, role: str, content: str, turn_id: Optional[str
             INSERT INTO messages (session_id, turn_id, role, content, translation, stt_ms, ttfa_ms)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (session_id, turn_id, role, content, translation, stt_ms, ttfa_ms))
+        msg_id = cursor.lastrowid
         cursor.execute("""
             UPDATE sessions SET total_turns = total_turns + 1 WHERE id = ?
         """, (session_id,))
+        # Indexar en FTS5 para búsqueda semántica/texto
+        try:
+            cursor.execute("""
+                INSERT INTO messages_fts (msg_id, role, content) VALUES (?, ?, ?)
+            """, (msg_id, role, content))
+        except Exception:
+            pass
         conn.commit()
 
 def update_message_translation(turn_id: str, role: str, translation: str):
@@ -147,13 +193,22 @@ def get_vocabulary_list(limit: int = 20) -> List[Dict[str, Any]]:
 
 def save_voice_note(content: str, title: Optional[str] = None) -> int:
     clean_title = title or f"Nota de voz ({time.strftime('%d/%m %H:%M')})"
+    clean_content = content.strip()
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO notes (title, content) VALUES (?, ?)
-        """, (clean_title, content.strip()))
+        """, (clean_title, clean_content))
+        note_id = cursor.lastrowid
+        # Indexar en FTS5
+        try:
+            cursor.execute("""
+                INSERT INTO notes_fts (note_id, title, content) VALUES (?, ?, ?)
+            """, (note_id, clean_title, clean_content))
+        except Exception:
+            pass
         conn.commit()
-        return cursor.lastrowid
+        return note_id
 
 def get_recent_notes(limit: int = 10) -> List[Dict[str, Any]]:
     with get_connection() as conn:
@@ -163,22 +218,113 @@ def get_recent_notes(limit: int = 10) -> List[Dict[str, Any]]:
         """, (limit,))
         return [dict(r) for r in cursor.fetchall()]
 
-def get_memory_context_string(limit_notes: int = 5, limit_vocab: int = 5) -> str:
-    """Genera un bloque de memoria persistente para inyectar en el contexto del LLM."""
-    notes = get_recent_notes(limit=limit_notes)
-    vocab = get_vocabulary_list(limit=limit_vocab)
-    
+def get_user_profile() -> Dict[str, str]:
+    """Retorna las propiedades y preferencias del usuario."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT key, value FROM user_profile")
+        return {r["key"]: r["value"] for r in cursor.fetchall()}
+
+def set_user_profile_value(key: str, value: str):
+    """Actualiza o crea una propiedad en el perfil del usuario."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO user_profile (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        """, (key, value.strip()))
+        conn.commit()
+
+def search_fts_memory(query: str, limit: int = 3) -> Dict[str, List[Dict[str, Any]]]:
+    """Busca en tablas virtuales FTS5 notas y mensajes coincidentes por palabras clave."""
+    clean_q = re.sub(r'[^\w\s]', '', query).strip()
+    words = [
+        w for w in clean_q.split()
+        if len(w) >= 3 and w.lower() not in {
+            "como", "donde", "cuando", "pero", "para", "sobre", "with", "this",
+            "that", "what", "where", "have", "been", "from", "cual", "cuales", "hola"
+        }
+    ]
+    if not words:
+        return {"notes": [], "messages": []}
+
+    match_query = " OR ".join([f'"{w}"*' for w in words])
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        notes = []
+        messages = []
+        try:
+            cursor.execute("""
+                SELECT title, content FROM notes_fts WHERE notes_fts MATCH ? LIMIT ?
+            """, (match_query, limit))
+            notes = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            pass
+
+        try:
+            cursor.execute("""
+                SELECT role, content FROM messages_fts WHERE messages_fts MATCH ? LIMIT ?
+            """, (match_query, limit))
+            messages = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            pass
+
+        return {"notes": notes, "messages": messages}
+
+def get_smart_memory_context(query: Optional[str] = None) -> str:
+    """
+    RAG Híbrido Contextual Avanzado:
+    1. Inyecta perfil de usuario (Cristian Arboleda, nivel de inglés, intereses).
+    2. Si el query consulta sobre temas pasados, realiza búsqueda indexada en FTS5.
+    3. Si es una conversación general, añade las notas más recientes y vocabulario.
+    """
+    profile = get_user_profile()
     parts = []
-    if notes:
-        notes_items = [f"- {n['title']}: {n['content']}" for n in reversed(notes)]
-        parts.append("NOTAS Y RECORDATORIOS GUARDADOS DEL USUARIO:\n" + "\n".join(notes_items))
+
+    # 1. Perfil del Usuario
+    if profile:
+        name = profile.get("name", "Cristian Arboleda")
+        level = profile.get("english_level", "B2")
+        interests = profile.get("interests", "")
+        parts.append(f"PERFIL DEL USUARIO: Hablas con {name}. Nivel inglés: {level}. Intereses: {interests}.")
+
+    # 2. Búsqueda contextual FTS5 si hay query orientada a recuerdos/notas
+    has_inquiry = False
+    if query:
+        inquiry_triggers = [
+            "te acuerdas", "recuerdas", "notas", "hablamos", "dije", "dijiste",
+            "remember", "notes", "talked", "mentioned", "comprar", "reunión", "clave"
+        ]
+        q_lower = query.lower()
+        if any(t in q_lower for t in inquiry_triggers):
+            has_inquiry = True
+            fts_results = search_fts_memory(query, limit=3)
+            if fts_results["notes"]:
+                notes_text = "; ".join([f"'{n['title']}: {n['content']}'" for n in fts_results["notes"]])
+                parts.append(f"NOTAS RELEVANTES ENCONTRADAS POR BÚSQUEDA: [{notes_text}]")
+            if fts_results["messages"]:
+                msgs_text = "; ".join([f"{m['role']}: '{m['content']}'" for m in fts_results["messages"]])
+                parts.append(f"CONVERSACIONES PREVIAS RELEVANTES: [{msgs_text}]")
+
+    # 3. Fallback a últimas notas si no hubo consulta específica
+    if not has_inquiry:
+        recent_notes = get_recent_notes(limit=3)
+        if recent_notes:
+            notes_str = "; ".join([f"{n['title']}: {n['content']}" for n in recent_notes])
+            parts.append(f"NOTAS RECIENTES GUARDADAS: [{notes_str}]")
+
+    vocab = get_vocabulary_list(limit=3)
     if vocab:
-        vocab_items = [f"- \"{v['phrase']}\" (Tip: {v['tip'] or 'correct phrasing'})" for v in vocab]
-        parts.append("VOCABULARIO Y PUNTOS DE MEJORA DEL USUARIO:\n" + "\n".join(vocab_items))
-        
+        v_str = "; ".join([f"\"{v['phrase']}\"" for v in vocab])
+        parts.append(f"VOCABULARIO CLAVE PRACTICADO: [{v_str}]")
+
     if not parts:
         return ""
-    return "\n\n[MEMORIA PERSISTENTE - CONTEXTO DISPONIBLE]\n" + "\n\n".join(parts)
+    return "\n\n[MEMORIA PERSISTENTE Y CONTEXTO RAG]\n" + "\n".join(parts)
+
+def get_memory_context_string(limit_notes: int = 5, limit_vocab: int = 5) -> str:
+    """Compatibilidad con versiones previas."""
+    return get_smart_memory_context()
 
 def clear_all_history():
     with get_connection() as conn:
@@ -187,4 +333,9 @@ def clear_all_history():
         cursor.execute("DELETE FROM sessions")
         cursor.execute("DELETE FROM vocabulary")
         cursor.execute("DELETE FROM notes")
+        try:
+            cursor.execute("DELETE FROM notes_fts")
+            cursor.execute("DELETE FROM messages_fts")
+        except Exception:
+            pass
         conn.commit()

@@ -46,7 +46,8 @@ class TestToolsAndMemory(unittest.TestCase):
     def test_memory_context_string(self):
         context = database.get_memory_context_string()
         self.assertIsInstance(context, str)
-        self.assertIn("NOTAS Y RECORDATORIOS", context)
+        self.assertIn("MEMORIA PERSISTENTE", context)
+        self.assertIn("NOTAS", context)
 
     def test_list_vocabulary_es(self):
         res = tools.detect_and_execute_tool("¿Qué vocabulario tengo?", lang_mode="es")
@@ -79,6 +80,25 @@ class TestToolsAndMemory(unittest.TestCase):
         self.assertIsInstance(note_id, int)
         notes = database.get_recent_notes(limit=5)
         self.assertTrue(any(n["content"] == "Revisar código fuente" for n in notes))
+
+    def test_user_profile(self):
+        profile = database.get_user_profile()
+        self.assertIn("name", profile)
+        self.assertEqual(profile["name"], "Cristian Arboleda")
+        database.set_user_profile_value("city", "Medellín")
+        updated = database.get_user_profile()
+        self.assertEqual(updated.get("city"), "Medellín")
+
+    def test_fts5_semantic_search(self):
+        database.save_voice_note("Comprar aguacates y plátanos maduros en el mercado", "Compras de fruta")
+        results = database.search_fts_memory("aguacates plátanos")
+        self.assertTrue(len(results["notes"]) > 0)
+        self.assertTrue(any("aguacates" in n["content"].lower() for n in results["notes"]))
+
+    def test_smart_memory_context(self):
+        context = database.get_smart_memory_context(query="¿Te acuerdas de los aguacates?")
+        self.assertIn("Cristian Arboleda", context)
+        self.assertIn("aguacates", context.lower())
 
     def test_no_tool_fallback_to_llm(self):
         res = tools.detect_and_execute_tool("Hola, ¿cómo estás hoy amigo?", lang_mode="es")
