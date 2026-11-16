@@ -48,7 +48,17 @@ if errorlevel 1 (
 
 :: 4. Lanzar Navegador en Modo App Nativa (Ventana independiente sin barras)
 echo [*] Abriendo interfaz conversacional en modo App Nativa...
-start "" cmd /c "timeout /t 2 /nobreak >nul & where msedge >nul 2>&1 && start msedge --app=https://localhost:8000 || (where chrome >nul 2>&1 && start chrome --app=https://localhost:8000 || start https://localhost:8000)"
+set "BROWSER_LAUNCHED=0"
+if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" (
+    start "" cmd /c "timeout /t 2 /nobreak >nul & start """" ""%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"" --app=https://localhost:8000"
+    set "BROWSER_LAUNCHED=1"
+) else if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" (
+    start "" cmd /c "timeout /t 2 /nobreak >nul & start """" ""%ProgramFiles%\Google\Chrome\Application\chrome.exe"" --app=https://localhost:8000"
+    set "BROWSER_LAUNCHED=1"
+)
+if "!BROWSER_LAUNCHED!"=="0" (
+    start "" cmd /c "timeout /t 2 /nobreak >nul & start https://localhost:8000"
+)
 
 :: 5. Iniciar Servidor Principal FastAPI HTTPS
 echo [*] Iniciando servidor FastAPI con aceleracion GPU...
@@ -61,3 +71,4 @@ call venv\Scripts\activate.bat
 python server.py --https --host 0.0.0.0 --port 8000
 
 pause
+

@@ -44,3 +44,4 @@ jobs:
       - name: Run Quality Gate Test Suite (38 Automated Tests)
         run: |
           python tests/run_all_tests.py
+

@@ -46,3 +46,4 @@ fi
 # 5. Start Voice Server
 echo "[*] Starting FastAPI HTTPS server..."
 python server.py --https --host 0.0.0.0 --port 8000
+
