@@ -209,3 +209,4 @@ class AudioRecorderManager {
 }
 
 window.AudioRecorderManager = AudioRecorderManager;
+

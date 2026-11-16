@@ -55,3 +55,4 @@ class GpuTelemetryManager {
 }
 
 window.GpuTelemetryManager = GpuTelemetryManager;
+

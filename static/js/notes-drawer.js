@@ -209,3 +209,4 @@ class NotesDrawerManager {
 }
 
 window.NotesDrawerManager = NotesDrawerManager;
+

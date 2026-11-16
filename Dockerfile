@@ -8,11 +8,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies (audio processing & networking)
+# Install system dependencies (audio processing, PortAudio & espeak)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ffmpeg \
     libsndfile1 \
+    libportaudio2 \
+    portaudio19-dev \
+    espeak-ng \
     curl \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*

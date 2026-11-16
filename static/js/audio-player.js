@@ -67,3 +67,4 @@ class AudioPlayerManager {
 }
 
 window.AudioPlayerManager = AudioPlayerManager;
+
