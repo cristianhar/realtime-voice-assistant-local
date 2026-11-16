@@ -10,8 +10,14 @@ try {
     powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c 2>$null
     powercfg /setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMAX 100 2>$null
     powercfg /setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMIN 100 2>$null
+    powercfg /change monitor-timeout-ac 0 2>$null
+    powercfg /change monitor-timeout-dc 0 2>$null
+    powercfg /change standby-timeout-ac 0 2>$null
+    powercfg /change standby-timeout-dc 0 2>$null
+    powercfg /change hibernate-timeout-ac 0 2>$null
+    powercfg /change hibernate-timeout-dc 0 2>$null
     powercfg /setactive SCHEME_CURRENT 2>$null
-    Write-Host "  OK: Plan de energia al 100% en CPU y PCIe." -ForegroundColor Gray
+    Write-Host "  OK: Plan de energia al 100% en CPU y PCIe (Suspension y apagado de pantalla desactivados)." -ForegroundColor Gray
 } catch {
     Write-Host "  Aviso al configurar plan de energia: $_" -ForegroundColor DarkYellow
 }

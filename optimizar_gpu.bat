@@ -10,8 +10,14 @@ powercfg /duplicatescheme 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c >nul 2>&1
 powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c >nul 2>&1
 powercfg /setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMAX 100 >nul 2>&1
 powercfg /setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMIN 100 >nul 2>&1
+powercfg /change monitor-timeout-ac 0 >nul 2>&1
+powercfg /change monitor-timeout-dc 0 >nul 2>&1
+powercfg /change standby-timeout-ac 0 >nul 2>&1
+powercfg /change standby-timeout-dc 0 >nul 2>&1
+powercfg /change hibernate-timeout-ac 0 >nul 2>&1
+powercfg /change hibernate-timeout-dc 0 >nul 2>&1
 powercfg /setactive SCHEME_CURRENT >nul 2>&1
-echo   Plan de energia configurado.
+echo   Plan de energia configurado (Suspension y apagado de pantalla desactivados).
 
 echo.
 echo [2/4] Desbloqueando reloj de memoria VRAM (P0: 8001 MHz)...
