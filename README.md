@@ -72,6 +72,8 @@ flowchart LR
   * 📌 *Guardar notas por voz:* `"Toma nota de comprar café y pan"` (**`11 ms`**, 300x más rápido gracias a indexación en segundo plano).
   * 📋 *Consultar notas:* `"¿Cuáles son mis notas?"`, `"Show my notes"` (`1.5 ms`).
   * 📝 *Vocabulario practicado:* `"¿Qué vocabulario tengo?"`, `"What words did I learn?"` (`1.2 ms`).
+  * 🌐 *Búsqueda Web en Tiempo Real:* `"Busca en internet el clima en Medellín"`, `"What is quantum computing according to Wikipedia"` (`80 ms – 200 ms`).
+  * ⏩ *Control Dinámico de Velocidad:* `"Habla más rápido"`, `"Habla más despacio"`, `"Velocidad normal"` (ajuste instantáneo pitch-preserved `0.85x` – `1.25x`).
 
 ### 4. 🎭 Voice Blending Híbrido & Modo Susurro (Whisper Mode)
 * **Mezcla Híbrida de Voces (Voice Blends):**
@@ -212,21 +214,25 @@ En consola verás las URLs de acceso directo:
 
 ## 🧪 Pruebas Automatizadas y Calibración (Quality Gate)
 
-El proyecto cuenta con un riguroso sistema de pruebas de calidad:
+El proyecto cuenta con un riguroso sistema de pruebas de calidad y pruebas de circuito cerrado en hardware real:
 
 ```bash
-# 🚀 Ejecutar la suite completa (35 pruebas unitarias y E2E en ~2.9s):
+# 🚀 Ejecutar la suite completa (38 pruebas unitarias y E2E en ~3.5s):
 python tests/run_all_tests.py
 
-# 🔬 Ejecutar la suite completa de Benchmark E2E y Calibración de Hardware en vivo:
+# 🔊 Ejecutar incluyendo prueba de audio real en hardware (Kokoro ONNX -> Faster-Whisper CUDA Loopback):
+python tests/run_all_tests.py --all
+
+# 🔬 Ejecutar la suite completa de Benchmark E2E y Calibración de Hardware en vivo por WebSocket:
 python tests/benchmark_full_calibration_suite.py
 ```
 
 ### Resumen de Suites en `tests/`:
 * `tests/test_e2e_pipeline.py`: Valida persistencia SQLite, tools locales, Hybrid RAG, chunker gapless y blends de voz.
-* `tests/test_tools_memory.py`: Pruebas exhaustivas de intención y latencia de tools (hora, notas, vocabulario, apps).
+* `tests/test_tools_memory.py`: Pruebas exhaustivas de intención y latencia de tools (hora, notas, vocabulario, apps, web search, speed control).
 * `tests/test_chunker.py`: Verificación matemática del streaming continuo sin silencios artificiales.
 * `tests/test_sanitization.py`: Sanitización de texto para síntesis limpia sin emojis ni asteriscos.
+* `tests/test_live_models_e2e.py`: Prueba de circuito cerrado de audio real (síntesis de audio con Dora y transcripción con Faster-Whisper CUDA).
 * `tests/benchmark_full_calibration_suite.py`: Telemetría en vivo por WebSocket de TTFT, TTFA, RTF y GPU clocks.
 
 ---
@@ -248,6 +254,89 @@ python tests/benchmark_full_calibration_suite.py
   TTFA Tool Calling (WSS)   1395.6 ms            < 1500 ms              EXCELENTE
   Interrupción (Barge-in)   Confirmado (<50ms)   Inmediato              APROBADO
 ==============================================================================
+```
+
+---
+
+## 💻 Requisitos del Sistema
+
+| Componente | Mínimo | Recomendado |
+| :--- | :--- | :--- |
+| **Sistema Operativo** | Windows 10/11 (64-bit) o Ubuntu 22.04+ LTS | Windows 11 o Ubuntu 24.04 (Nativo o Docker) |
+| **GPU** | NVIDIA GTX 1650 / RTX 3050 (4 GB VRAM) | NVIDIA RTX 4050 / 4060 Laptop o Desktop (6 GB+ VRAM) |
+| **Procesador (CPU)** | 4 núcleos x86_64 | 6+ núcleos (Intel Core i5/i7 o AMD Ryzen 5/7) |
+| **Memoria RAM** | 8 GB | 16 GB |
+| **CUDA Driver** | CUDA 12.x | CUDA 12.4+ / cuBLAS v12 |
+| **Navegador** | Chrome 110+, Edge 110+, Safari 16+ | Chrome / Safari móvil con HTTPS habilitado |
+
+---
+
+## 🔌 API REST & Protocolo WebSocket
+
+El servidor FastAPI expone tanto endpoints REST convencionales como el canal WebSocket dúplex para audio en tiempo real:
+
+### Endpoints REST
+| Método | Ruta | Descripción |
+| :--- | :--- | :--- |
+| `GET` | `/health` | Chequeo de salud del servicio y disponibilidad de GPU NVIDIA. |
+| `GET` | `/api/notes` | Lista todas las notas de voz guardadas en la base de datos SQLite. |
+| `POST` | `/api/notes` | Crea manualmente una nueva nota de voz. |
+| `DELETE` | `/api/notes/{id}` | Elimina una nota por su identificador. |
+| `POST` | `/api/notes/synthesize` | Genera una síntesis ejecutiva de todas las notas usando LLaMA 3.2. |
+| `GET` | `/api/telemetry/gpu` | Retorna telemetría en vivo: VRAM ocupada/libre, temperatura y nombre de GPU. |
+| `GET` | `/api/user-profile` | Obtiene el perfil de usuario activo (nombre, nivel de inglés, intereses). |
+| `PUT` | `/api/user-profile` | Actualiza campos del perfil de usuario persistente. |
+| `DELETE` | `/api/history` | Vacía el historial de conversaciones, notas y vocabulario guardado. |
+
+### Canal WebSocket (`/ws/chat`)
+* **Cliente $\rightarrow$ Servidor:**
+  * `audio_final`: Envía búfer WAV 16kHz PCM para transcripción completa de fin de turno.
+  * `audio_stream`: Streaming progresivo de audio para transcripción parcial en tiempo real.
+  * `interrupt`: Señal de cancelación inmediata (barge-in) para silenciar la generación.
+  * `set_mode`: Cambia modo de conversación (`"es"`, `"en"`, `"auto"`).
+  * `set_voice`: Selecciona voz individual o Voice Blend (`"blend_dora_sarah"`, etc.).
+  * `set_personality`: Cambia persona activa (`"coach"`, `"friendly"`, `"tech"`, `"executive"`, `"interviewer"`).
+  * `set_whisper_mode`: Activa/desactiva la modulación acústica de susurro (`true`/`false`).
+* **Servidor $\rightarrow$ Cliente:**
+  * `user_partial_transcription`: Texto parcial en vivo mientras el usuario habla.
+  * `user_transcription`: Transcripción final fijada con latencia STT en milisegundos.
+  * `ai_chunk`: Fragmentos de texto generados en streaming por LLaMA 3.2.
+  * `audio_chunk`: Paquetes de audio sintetizados en base64 listos para reproducción gapless.
+  * `tool_executed`: Notificación de herramienta ejecutada con datos y respuesta enriquecida.
+  * `ai_done`: Cierre de turno con tiempo total de respuesta.
+
+---
+
+## 🧩 Ecosistema de Skills Modulares (Agensi.io / Claude Code / Cursor / Copilot)
+
+La arquitectura del proyecto está desacoplada de tal manera que sus componentes clave pueden empaquetarse e instalarse como **Skills (`SKILL.md`)** en agentes de software como **Claude Code, Cursor, Windsurf, Copilot** o distribuirse en marketplaces como **[Agensi.io](https://agensi.io)**:
+
+1. **Sub-Sentence Gapless Chunker:** Algoritmo de división progresiva de oraciones y cláusulas con retención de latencia sub-segundo.
+2. **Zero-Latency Hybrid SQLite RAG:** Búsqueda vectorial semántica (3072D Cosine) y léxica (FTS5) en SQLite local.
+3. **Web Audio VAD & Barge-In:** Controlador en cliente para corte inmediato de audio (<50 ms) y filtrado de ruido.
+
+---
+
+## ❓ Preguntas Frecuentes & Solución de Problemas (FAQ)
+
+### 1. ¿Por qué el micrófono no se activa al abrir la web desde mi celular?
+Los navegadores modernos (Chrome y Safari móvil) **bloquean el acceso al micrófono si la conexión no es HTTPS**. Nuestro servidor genera certificados SSL locales en `certs/`:
+* Asegúrate de entrar con `https://<tu-ip-local>:8000`.
+* En Chrome/Safari verás la advertencia de *"Certificado autofirmado / No seguro"*; pulsa en **"Configuración avanzada"** $\rightarrow$ **"Continuar a este sitio"**. El micrófono funcionará de inmediato.
+
+### 2. Error en Windows: `Could not load library cublas64_12.dll`
+Si Faster-Whisper no detecta CUDA en Windows, instala los paquetes oficiales de NVIDIA en tu entorno virtual:
+```powershell
+pip install nvidia-cublas-cu12 nvidia-cuda-nvrtc-cu12
+```
+El archivo `core/config.py` detectará automáticamente estas DLLs y las agregará al `PATH` en el arranque.
+
+### 3. ¿Cómo configurar Docker para usar mi GPU NVIDIA?
+En Windows, asegúrate de tener **Docker Desktop con WSL 2** activado. En Linux, instala el paquete `nvidia-container-toolkit`:
+```bash
+sudo apt-get install -y nvidia-container-toolkit
+sudo systemctl restart docker
+docker compose up --build
 ```
 
 ---
@@ -300,7 +389,9 @@ python tests/benchmark_full_calibration_suite.py
 
 ## 👤 Autor & Créditos
 
-Desarrollado y mantenido por **Cristian Arboleda** ([@cristianhar](https://github.com/cristianhar)).
+Desarrollado y mantenido con dedicación por **Cristian Arboleda** ([@cristianhar](https://github.com/cristianhar)).
 
+* **GitHub:** [https://github.com/cristianhar](https://github.com/cristianhar)
+* **Repositorio Oficial:** [https://github.com/cristianhar/realtime-voice-assistant-local](https://github.com/cristianhar/realtime-voice-assistant-local)
 * **Licencia:** MIT License. Consulta el archivo [LICENSE](LICENSE) para más detalles.
 * **Agradecimientos:** [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper), [Kokoro-ONNX](https://github.com/thewh1teagle/kokoro-onnx), [Ollama](https://ollama.com) y la comunidad open-source de Inteligencia Artificial Local.
