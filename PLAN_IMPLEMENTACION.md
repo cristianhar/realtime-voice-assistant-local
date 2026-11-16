@@ -17,7 +17,7 @@
 | **Doble Visualización** | Solo voz | **Texto en vivo, traducción al español en burbuja y feedback gramatical** | ✅ **Completado** |
 | **Sincronización Multi-Turno** | No contemplado | **Vinculación por `turn_id` único para evitar desfase de traducciones** | ✅ **Completado** |
 | **Transcripción en Vivo** | Envío al final del audio | **Transcripción parcial continua mientras hablas (palabra por palabra)** | ✅ **Completado** |
-| **Memoria Persistente** | SQLite + ChromaDB | Historial en memoria de sesión (context window rolling de 10 turnos) | ⏳ **Fase Futura** |
+| **Memoria Persistente** | SQLite + ChromaDB | **Base de datos SQLite local (`voice_assistant.db`) + RAG contextual + Tool Calling** | ✅ **Completado (Fase 5)** |
 
 ---
 
@@ -93,10 +93,24 @@ flowchart TD
 - [x] **Eliminación Total de 'Frenos' y Vacíos de Audio**: Encadenamiento con precarga y colchón de buffer de +2.8 segundos de anticipación (100% de transiciones continuas sin silencios).
 - [x] **Filtro Anti-Respiración y Ruido Ambiental (VAD Slider)**: Control de sensibilidad y visualizador con línea de umbral roja.
 
-### Fase 5: Memoria Persistente y Herramientas (Tool Calling) [FASE ACTUAL / SIGUIENTE]
-- [ ] **Base de datos SQLite local**: Persistencia de sesiones, transcripciones y perfiles de usuario sin conexión a internet.
-- [ ] **RAG Ultraligero de Vocabulario y Notas**: Almacén vectorial local (`sqlite-vec` / ChromaDB local) para recordar errores pasados, palabras difíciles y temas conversados entre sesiones.
-- [ ] **Tool Calling Local**: Capacidad para ejecutar herramientas en segundo plano (consultar la hora, tomar notas de voz, consultar archivos locales o consultar el clima).
+### Fase 5: Memoria Persistente, RAG Contextual y Herramientas (Tool Calling)
+- [x] **Base de datos SQLite local (`database.py`)**: Persistencia estructurada de sesiones, mensajes, traducciones, vocabulario aprendido y notas de voz (`voice_assistant.db`).
+- [x] **RAG Ultraligero y Memoria a Largo Plazo**: Inyección dinámica en el prompt del sistema (`get_memory_context_string()`), permitiendo que el LLM recuerde notas, palabras y contexto conversacional entre días y sesiones.
+- [x] **Tool Calling Local por Voz con Latencia Cero (`tools.py`)**:
+  - Consulta de hora y fecha actual en español e inglés ("¿Qué hora es?", "What time is it?").
+  - Creación de notas de voz ("Toma nota de...", "Recuérdame...", "Take a note...").
+  - Consulta y lectura de notas guardadas ("¿Cuáles son mis notas?", "Show my notes").
+  - Consulta de vocabulario registrado ("¿Qué palabras aprendí?", "What vocabulary did I learn?").
+- [x] **Endpoints REST para Historial y Notas**: `/api/history`, `/api/vocabulary`, `/api/notes`.
+- [x] **Interfaz Visual de Notas y Vocabulario**: Panel lateral "📌 Notas Rápidas por Voz" y sincronización automática tras cada ejecución de herramienta.
+- [x] **Suite de Pruebas Unitarias de Herramientas y Memoria**: `tests/test_tools_memory.py` (10/10 tests pasando).
+
+---
+
+### Fase 6: Próximas Mejoras (Roadmap Futuro)
+- [ ] Conexión a herramientas externas del sistema (automatización con Python, apertura de aplicaciones).
+- [ ] Búsqueda semántica por embeddings vectoriales densos (`sqlite-vec`).
+- [ ] Exportación de sesiones y notas a Markdown o Notion.
 
 ---
 
