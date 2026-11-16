@@ -13,7 +13,7 @@
 [![Kokoro ONNX](https://img.shields.io/badge/Kokoro--TTS-82M_ONNX-FF6F00.svg)](https://github.com/thewh1teagle/kokoro-onnx)
 [![PWA](https://img.shields.io/badge/PWA-Mobile_Ready-purple.svg)](https://web.dev/progressive-web-apps/)
 [![Tests Passing](https://img.shields.io/badge/Quality_Gate-38%2F38_Passing-brightgreen.svg)](tests/run_all_tests.py)
-[![CI Quality Gate](https://github.com/cristianhar/realtime-voice-assistant-local/actions/workflows/ci.yml/badge.svg)](https://github.com/cristianhar/realtime-voice-assistant-local/actions)
+[![CI Quality Gate](https://github.com/cristianhar/realtime-voice-assistant-local/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cristianhar/realtime-voice-assistant-local/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 An open-source, full-duplex, real-time conversational voice assistant (similar to **ChatGPT Voice Mode**), engineered to run **100% locally, private, without internet connection, and calibrated for 6 GB VRAM NVIDIA RTX GPUs** (such as RTX 4050 / RTX 4060 Laptop or desktop equivalents).
