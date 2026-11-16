@@ -17,3 +17,4 @@ def is_text_spanish(text: str) -> bool:
         return True
     words = set(re.findall(r'\b\w+\b', lower))
     return len(words.intersection(COMMON_SPANISH_WORDS)) > 0
+

@@ -65,3 +65,4 @@ Verificar que:
 * **Regla 1:** Los 25 tests de `tests/run_all_tests.py` deben terminar en estado `OK` (0 fallos, 0 errores).
 * **Regla 2:** Si se modificó la lógica de WebSocket o streaming, verificar que `server.py` arranque limpiamente.
 * **Regla 3:** Nunca commitear archivos binarios pesados (`.onnx`, `.bin`, `.db`, `.wav`).
+

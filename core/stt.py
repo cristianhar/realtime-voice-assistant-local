@@ -58,3 +58,4 @@ def transcribe_audio_bytes(stt_model: WhisperModel, audio_bytes: bytes, lang_mod
     except Exception as e:
         print(f"Error en STT: {e}")
         return "", 0, "en"
+

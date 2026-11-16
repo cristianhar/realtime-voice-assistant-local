@@ -52,3 +52,4 @@ Respond ONLY with valid JSON matching this schema:
     except Exception as e:
         print(f"[Aviso] Error en análisis post-turno: {e}")
     return {}
+

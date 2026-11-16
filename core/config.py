@@ -60,3 +60,4 @@ RULES:
 3. Never use markdown, bullet points, asterisks, or emojis.
 4. Maintain seamless conversational continuity and end with a friendly question."""
 }
+

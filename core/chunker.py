@@ -48,3 +48,4 @@ class SentenceChunker:
             return ready_sentence, remaining, True
 
         return "", buffer, False
+
