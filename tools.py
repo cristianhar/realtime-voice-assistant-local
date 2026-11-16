@@ -182,3 +182,4 @@ def detect_and_execute_tool(text: str, lang_mode: str = "es") -> Optional[Dict[s
         }
 
     return None
+
