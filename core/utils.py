@@ -30,12 +30,12 @@ def is_text_spanish(text: str) -> bool:
 
 CONVERSATIONAL_FILLERS = {
     "es": {
-        "thinking": ["Mmm...", "A ver...", "Veamos..."],
+        "thinking": ["A ver...", "Veamos...", "Bueno..."],
         "agreement": ["Claro...", "Por supuesto...", "Entendido..."],
         "searching": ["Un segundo...", "Déjame revisar...", "Buscando..."]
     },
     "en": {
-        "thinking": ["Mmm...", "Let's see...", "Well..."],
+        "thinking": ["Let's see...", "Well...", "Alright..."],
         "agreement": ["Sure...", "Got it...", "Right..."],
         "searching": ["One second...", "Let me check...", "Looking that up..."]
     }

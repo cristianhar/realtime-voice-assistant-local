@@ -29,7 +29,10 @@ def clean_tts_text(text: str) -> str:
     # 1. Eliminar acciones narrativas entre asteriscos o paréntesis
     t = re.sub(r'\*.*?\*', '', text)
     t = re.sub(r'\(.*?\)', '', t)
-    # 2. Eliminar emojis y caracteres no fonéticos
+    # 2. Reemplazar titubeos no fonéticos ("Mmm", "Umm") por pausas naturales en español
+    t = re.sub(r'\b[Mm]{2,}\b', 'A ver...', t)
+    t = re.sub(r'\b[Uu]mm+\b', 'A ver...', t, flags=re.IGNORECASE)
+    # 3. Eliminar emojis y caracteres no fonéticos
     t = re.sub(r'[^\w\s.,!?:;¿¡áéíóúÁÉÍÓÚñÑüÜ\'\"-]', '', t)
     # 3. Normalizar espacios
     return re.sub(r'\s+', ' ', t).strip()
