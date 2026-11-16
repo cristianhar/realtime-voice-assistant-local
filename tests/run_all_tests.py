@@ -24,6 +24,10 @@ def run_all_e2e_and_unit_tests():
         "tests.test_e2e_pipeline"
     ]
 
+    if "--with-audio" in sys.argv or "--all" in sys.argv:
+        test_modules.append("tests.test_live_models_e2e")
+        print("🔊 Modo de audio real activado (--with-audio): incluye test de síntesis Kokoro y STT CUDA.")
+
     for mod in test_modules:
         try:
             suite.addTests(loader.loadTestsFromName(mod))
