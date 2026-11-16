@@ -13,6 +13,7 @@
 [![Kokoro ONNX](https://img.shields.io/badge/Kokoro--TTS-82M_ONNX-FF6F00.svg)](https://github.com/thewh1teagle/kokoro-onnx)
 [![PWA](https://img.shields.io/badge/PWA-Mobile_Ready-purple.svg)](https://web.dev/progressive-web-apps/)
 [![Tests Passing](https://img.shields.io/badge/Quality_Gate-38%2F38_Passing-brightgreen.svg)](tests/run_all_tests.py)
+[![CI Quality Gate](https://github.com/cristianhar/realtime-voice-assistant-local/actions/workflows/ci.yml/badge.svg)](https://github.com/cristianhar/realtime-voice-assistant-local/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Un asistente de voz full-duplex en tiempo real (similar a **ChatGPT Voice Mode**), diseñado para funcionar **100% local, privado, sin conexión a internet y optimizado para GPUs NVIDIA RTX de 6 GB VRAM** (como RTX 4050 / RTX 4060 Laptop o superiores).
@@ -215,6 +216,12 @@ En consola verás las URLs de acceso directo:
 * 💻 **En esta PC:** `https://localhost:8000`
 * 📱 **En tu Celular:** `https://192.168.x.x:8000`
 
+### 7. 🚀 Iniciador de Escritorio de 1-Clic (Sin Comandos ni Terminal)
+Para una experiencia de aplicación de escritorio sin tocar la terminal:
+* **Windows:** Haz doble clic en [`launch_voice_assistant.bat`](launch_voice_assistant.bat). Valida dependencias, arranca Ollama en segundo plano si está apagado, enciende el servidor HTTPS y abre la interfaz como ventana de escritorio independiente.
+* **Creador de Acceso Directo:** Ejecuta `create_desktop_shortcut.ps1` en PowerShell para anclar el acceso directo oficial (`VoiceChat AI Local.lnk`) directamente en tu fondo de escritorio.
+* **Linux / macOS:** Ejecuta `./launch_voice_assistant.sh`.
+
 ---
 
 ## 🧪 Pruebas Automatizadas y Calibración (Quality Gate)
@@ -349,6 +356,9 @@ docker compose up --build
 ## 🏛️ Estructura del Proyecto
 
 ```text
+├── .github/
+│   └── workflows/
+│       └── ci.yml            # Pipeline automatizado de CI/CD con GitHub Actions
 ├── core/
 │   ├── __init__.py           # Exportación limpia y carga modular
 │   ├── config.py             # Configuración centralizada, rutas, DLLs CUDA y personalidades
@@ -386,6 +396,9 @@ docker compose up --build
 ├── server.py                 # Orquestador FastAPI WebSocket con soporte HTTPS
 ├── Dockerfile                # Imagen Docker optimizada para producción
 ├── docker-compose.yml        # Stack completo con Ollama GPU y Voice Assistant
+├── launch_voice_assistant.bat # Iniciador de escritorio de 1-clic para Windows
+├── launch_voice_assistant.sh # Iniciador de 1-clic para Linux/macOS
+├── create_desktop_shortcut.ps1 # Creador de acceso directo en el escritorio de Windows
 ├── requirements.txt          # Dependencias de Python fijadas
 └── README.md                 # Documentación técnica completa
 ```
