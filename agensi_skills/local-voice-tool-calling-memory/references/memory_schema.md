@@ -32,3 +32,4 @@ CREATE TABLE IF NOT EXISTS user_profile (
     value TEXT NOT NULL
 );
 ```
+

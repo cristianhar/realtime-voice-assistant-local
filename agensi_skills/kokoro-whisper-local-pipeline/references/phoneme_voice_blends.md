@@ -12,3 +12,4 @@ Kokoro supports linear vector blending between speaker embeddings, producing uni
 - **Spanish Naturalist (80% ef_dora + 20% em_alex)**:
   - Base tone: Fluid conversational Spanish with balanced pitch.
   - Formula: `blend_voices(ef_dora, em_alex, weight_a=0.8)`
+

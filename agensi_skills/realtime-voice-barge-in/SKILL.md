@@ -69,3 +69,4 @@ When the client-side VAD detects incoming user speech while AI audio is actively
 1. **Always use 16kHz Mono PCM**: Whisper and local STT models expect single-channel 16,000 Hz audio. Downsampling in the browser prevents unnecessary network transfer and server-side resamplers.
 2. **Sequential Audio Buffer Queue**: Never play streaming audio chunks simultaneously. Maintain a strictly ordered queue where chunk `N+1` plays precisely at `N.startTime + N.duration`.
 3. **Double-Barrier Interruption**: Cut audio client-side first (<10ms perceived latency), then inform the server. Never wait for a server round-trip before silencing local speakers.
+

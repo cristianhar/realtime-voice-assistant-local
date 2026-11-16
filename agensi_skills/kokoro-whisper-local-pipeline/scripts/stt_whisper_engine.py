@@ -39,3 +39,4 @@ def transcribe_pcm(model, audio_bytes: bytes, language: str = None):
     )
     text = " ".join([s.text.strip() for s in segments]).strip()
     return text, info.language
+

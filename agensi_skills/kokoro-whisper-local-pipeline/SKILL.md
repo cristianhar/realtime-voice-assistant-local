@@ -49,3 +49,4 @@ Activate this skill when:
 1. **Never pass raw markdown to TTS**: Strip asterisks (`*`), hashtags (`#`), backticks (```), brackets, and URLs before calling the phonemizer to prevent the synthesizer from reading symbols aloud.
 2. **Warm-up CUDA Kernels on Startup**: Execute a dummy 1-second silence inference through Whisper upon loading to compile GPU kernels ahead of the first user interaction.
 3. **Run Kokoro on Multithreaded CPU**: Offloading Kokoro's ONNX session to CPU with 4 dedicated threads frees up over 500 MB of VRAM for the STT and LLM, allowing smooth concurrent processing.
+

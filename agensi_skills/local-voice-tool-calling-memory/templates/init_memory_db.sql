@@ -23,3 +23,4 @@ CREATE TABLE IF NOT EXISTS user_profile (
 -- Seed default configuration
 INSERT OR IGNORE INTO user_profile (key, value) VALUES ('preferred_lang', 'en');
 INSERT OR IGNORE INTO user_profile (key, value) VALUES ('speech_rate', '1.0');
+

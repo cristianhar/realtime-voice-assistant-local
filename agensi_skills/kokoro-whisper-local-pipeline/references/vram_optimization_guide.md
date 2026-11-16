@@ -18,3 +18,4 @@ When deploying local voice AI on consumer GPUs (e.g. RTX 4050 Laptop with 6GB VR
    - Execution Provider: `CPUExecutionProvider` with ONNX Runtime.
    - VRAM usage: **0 MB** (Runs entirely in host system RAM with 4 parallel threads).
    - Latency: ~400ms per synthesized clause, completely avoiding GPU memory competition.
+
