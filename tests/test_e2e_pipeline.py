@@ -144,5 +144,27 @@ class TestEndToEndPipeline(unittest.TestCase):
         self.assertNotIn("👍", clean)
         self.assertEqual(clean, "¡Hola! ¿Cómo te va hoy? 100")
 
+    def test_06_frontend_modular_assets_e2e(self):
+        """Verifica que los assets frontend modulares (locales.json, scripts JS) existan y sean válidos."""
+        from core.config import STATIC_DIR
+        import json
+
+        locales_file = os.path.join(STATIC_DIR, "locales.json")
+        self.assertTrue(os.path.isfile(locales_file), "locales.json debe existir en static/")
+
+        with open(locales_file, "r", encoding="utf-8") as f:
+            locales_data = json.load(f)
+
+        expected_languages = ["es", "en", "pt", "fr", "de", "it", "ja", "zh"]
+        for lang in expected_languages:
+            self.assertIn(lang, locales_data, f"Idioma {lang} debe estar en locales.json")
+            self.assertIn("welcome_title", locales_data[lang])
+            self.assertIn("label_personality", locales_data[lang])
+
+        js_files = ["i18n.js", "visualizer.js", "wav-encoder.js"]
+        for js in js_files:
+            js_path = os.path.join(STATIC_DIR, "js", js)
+            self.assertTrue(os.path.isfile(js_path), f"El módulo {js} debe existir en static/js/")
+
 if __name__ == "__main__":
     unittest.main()
