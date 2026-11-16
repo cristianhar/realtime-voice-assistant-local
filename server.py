@@ -161,6 +161,30 @@ async def api_get_personalities():
     """Retorna las personalidades conversacionales disponibles."""
     return PERSONALITIES
 
+@app.get("/api/personas")
+async def api_get_personas():
+    """Retorna las personas avanzadas cargadas dinámicamente desde personas/."""
+    personas_dir = os.path.join(os.path.dirname(__file__), "personas")
+    result = []
+    if os.path.isdir(personas_dir):
+        for fname in os.listdir(personas_dir):
+            if fname.endswith(".json"):
+                try:
+                    with open(os.path.join(personas_dir, fname), "r", encoding="utf-8") as f:
+                        result.append(json.load(f))
+                except Exception:
+                    pass
+    return result
+
+@app.get("/api/plugins")
+async def api_get_plugins():
+    """Retorna el catálogo de herramientas y plugins modulares activos."""
+    try:
+        from core.plugin_loader import get_loaded_tools_metadata
+        return get_loaded_tools_metadata()
+    except Exception:
+        return []
+
 @app.get("/api/profile")
 async def api_get_profile():
     """Retorna el perfil y preferencias del usuario."""

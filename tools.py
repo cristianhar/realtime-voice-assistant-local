@@ -533,5 +533,20 @@ def detect_and_execute_tool(text: str, lang_mode: str = "es") -> Optional[Dict[s
             "data": {"speed": speed_val, "action": action}
         }
 
+    # 7. Plugins modulares extensibles (custom_tools/)
+    try:
+        from core.plugin_loader import dispatch_custom_tool
+        handled, custom_resp, tool_id = dispatch_custom_tool(user_text, lang=lang_mode)
+        if handled:
+            return {
+                "tool": f"custom_{tool_id}",
+                "spoken_response": custom_resp,
+                "display_response": f"🧩 [{tool_id.title()}]: {custom_resp}",
+                "lang": lang_mode,
+                "data": {"plugin": tool_id}
+            }
+    except Exception:
+        pass
+
     return None
 

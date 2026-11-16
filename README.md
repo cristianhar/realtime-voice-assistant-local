@@ -12,17 +12,31 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Llama_3.2_3B-black.svg)](https://ollama.com/)
 [![Kokoro ONNX](https://img.shields.io/badge/Kokoro--TTS-82M_ONNX-FF6F00.svg)](https://github.com/thewh1teagle/kokoro-onnx)
 [![PWA](https://img.shields.io/badge/PWA-Mobile_Ready-purple.svg)](https://web.dev/progressive-web-apps/)
-[![Tests Passing](https://img.shields.io/badge/Quality_Gate-47%2F47_Passing-brightgreen.svg)](tests/run_all_tests.py)
+[![Tests Passing](https://img.shields.io/badge/Quality_Gate-53%2F53_Passing-brightgreen.svg)](tests/run_all_tests.py)
 [![CI Quality Gate](https://img.shields.io/github/actions/workflow/status/cristianhar/realtime-voice-assistant-local/ci.yml?branch=main&label=CI%20Quality%20Gate)](https://github.com/cristianhar/realtime-voice-assistant-local/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 An open-source, full-duplex, real-time conversational voice assistant (similar to **ChatGPT Voice Mode**), engineered to run **100% locally, private, without internet connection, and calibrated for 6 GB VRAM NVIDIA RTX GPUs** (such as RTX 4050 / RTX 4060 Laptop or desktop equivalents).
 
-Enables continuous **hands-free phone-call voice interactions**, live word-by-word streaming transcription, sub-50ms instant **barge-in interruption**, dense semantic memory (Hybrid RAG), interpolated real-time **voice blends**, an acoustic **whisper mode**, cross-device mobile access via auto-generated **HTTPS / PWA**, synthetic Web Audio earcons, dynamic speech rate control, and one-command deployment via **Docker & Docker Compose**.
+Enables continuous **hands-free phone-call voice interactions**, live word-by-word streaming transcription, sub-50ms instant **barge-in interruption**, dense semantic memory (Hybrid RAG), modular drop-in **custom tools**, ready-to-use **Persona Hub**, interpolated real-time **voice blends**, an acoustic **whisper mode**, cross-device mobile access via auto-generated **HTTPS / PWA**, and one-command deployment.
 
 <p align="center">
   <img src="docs/images/voice_assistant_demo.gif" alt="Realtime Voice Assistant Local Full-Duplex Demo" width="720"/>
 </p>
+
+## ⚡ 1-Line Instant Quickstart (Zero-Friction)
+
+Paste into your terminal to clone, configure virtual environment, download models, and launch:
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/cristianhar/realtime-voice-assistant-local/main/install.ps1 | iex
+```
+
+**Linux / macOS (Bash):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/cristianhar/realtime-voice-assistant-local/main/install.sh | bash
+```
 
 ---
 

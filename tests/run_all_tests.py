@@ -26,7 +26,8 @@ def run_all_e2e_and_unit_tests():
         "tests.test_tools_memory",
         "tests.test_e2e_pipeline",
         "tests.test_agensi_skills_e2e",
-        "tests.test_humanization_and_vad"
+        "tests.test_humanization_and_vad",
+        "tests.test_custom_tools_and_personas"
     ]
 
     if "--with-audio" in sys.argv or "--all" in sys.argv:
