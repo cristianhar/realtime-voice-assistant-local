@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # --------------------------------------------------------------------------
   # 1. Ollama LLM Service (Llama 3.2 3B & Dense Embeddings)
@@ -74,3 +72,4 @@ services:
 volumes:
   ollama_data:
     driver: local
+
