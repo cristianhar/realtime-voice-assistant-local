@@ -874,6 +874,9 @@ function escapeHtml(text) {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
+    if (window.I18nManager) {
+        await window.I18nManager.init();
+    }
     connectWebSocket();
     populateMicrophones();
 
@@ -935,6 +938,17 @@ window.addEventListener("DOMContentLoaded", async () => {
             document.querySelectorAll(".lang-btn").forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
             currentLanguageMode = btn.dataset.mode;
+
+            // Sincronizar traducción completa de la interfaz de usuario (i18n)
+            if (window.I18nManager) {
+                if (currentLanguageMode === "es") {
+                    window.I18nManager.setLanguage("es", false);
+                } else if (currentLanguageMode === "en") {
+                    window.I18nManager.setLanguage("en", false);
+                } else {
+                    window.I18nManager.applyLanguage(window.I18nManager.currentLang);
+                }
+            }
 
             // Auto-seleccionar la mejor voz para el modo (preservando mezclas híbridas si el usuario las eligió)
             if (voiceSelect) {
@@ -1149,12 +1163,9 @@ window.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // Inicializar visualizador 60 FPS e internacionalización modular
+    // Inicializar visualizador 60 FPS
     if (window.AudioVisualizer) {
         window.AudioVisualizer.init();
-    }
-    if (window.I18nManager) {
-        await window.I18nManager.init();
     }
     loadUserProfile();
     loadPersistentVocabulary();

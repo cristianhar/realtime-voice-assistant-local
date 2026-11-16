@@ -1,6 +1,119 @@
 // static/js/i18n.js - Gestor Modular de Internacionalización (i18n)
+const DEFAULT_FALLBACK_LOCALES = {
+    "es": {
+        "mode_en": "🇺🇸 Practicar Inglés",
+        "mode_es": "🇪🇸 Español",
+        "mode_auto": "🌐 Bilingüe / Auto",
+        "connecting": "Conectando...",
+        "connected": "Conectado (Local)",
+        "disconnected": "Desconectado. Reintentando...",
+        "orb_ready": "Listo para conversar",
+        "orb_listening": "📞 Te escucho...",
+        "orb_speaking": "Hablando...",
+        "orb_thinking": "Pensando respuesta...",
+        "welcome_title": "👋 ¡Bienvenido a tu Sala de Voz con IA Local!",
+        "welcome_desc": "Habla libremente con naturalidad. Verás la transcripción en vivo palabra por palabra, traducciones, notas guardadas y feedback en tiempo real.",
+        "tip_no_limits": "💡 Sin límites de tiempo",
+        "tip_offline": "⚡ 100% Local y privado",
+        "tip_memory": "🎯 Memoria RAG y herramientas",
+        "input_placeholder_en": "Escribe un mensaje en inglés...",
+        "input_placeholder_es": "Escribe un mensaje en español...",
+        "input_placeholder_auto": "Escribe o habla en inglés o español...",
+        "call_btn_start": "Iniciar Modo Llamada (Manos Libres)",
+        "call_btn_stop": "Finalizar Modo Llamada",
+        "label_mic": "🎤 Mic:",
+        "label_voice": "🗣️ Voz IA:",
+        "label_vad": "🎚️ Filtro VAD:",
+        "label_personality": "🎭 Personalidad:",
+        "label_whisper": "🌙 Susurro:",
+        "whisper_off": "Desactivado",
+        "whisper_on": "Activado",
+        "pers_coach": "🎓 Tutor de Idiomas",
+        "pers_friendly": "🤗 Amigo Casual",
+        "pers_tech": "💻 Senior Tech Lead",
+        "pers_executive": "👔 Mentor Ejecutivo",
+        "vad_low": "Baja (Filtra respiración fuerte y ventilador)",
+        "vad_med": "Media (Recomendada)",
+        "vad_high": "Alta (Habla muy suave)",
+        "mic_btn_speak": "Pulsar para hablar",
+        "mic_btn_listening": "Escuchando...",
+        "interrupt_btn": "⏹ Interrumpir",
+        "meter_label": "Nivel de voz:",
+        "panel_coaching": "🎯 Tutor Feedback & Grammar",
+        "panel_coaching_empty": "Habla en inglés para recibir observaciones gramaticales y sugerencias de vocabulario en tiempo real.",
+        "panel_vocab": "📝 Vocabulario & Frases",
+        "panel_vocab_empty": "Aquí se guardarán las oraciones clave de la sesión.",
+        "panel_notes": "📌 Notas Rápidas por Voz",
+        "panel_notes_empty": "Di \"Toma nota de...\" o \"Recuérdame...\" para guardar notas por voz.",
+        "panel_metrics": "⚡ Rendimiento en Tiempo Real",
+        "metric_time": "Hora último mensaje:",
+        "metric_stt": "Whisper STT (Voz):",
+        "metric_ttfa": "Latencia 1er Audio (TTFA):",
+        "metric_total": "Tiempo Total Respuesta:",
+        "metric_vram": "VRAM Utilizada:",
+        "tool_badge": "🔧 Herramienta: ",
+        "clear_confirm": "¿Deseas vaciar la base de datos de conversaciones, notas y vocabulario guardado?",
+        "clear_done": "Historial, notas y vocabulario limpiados."
+    },
+    "en": {
+        "mode_en": "🇺🇸 Practice English",
+        "mode_es": "🇪🇸 Spanish Assistant",
+        "mode_auto": "🌐 Bilingual / Auto",
+        "connecting": "Connecting...",
+        "connected": "Connected (Local)",
+        "disconnected": "Disconnected. Retrying...",
+        "orb_ready": "Ready to converse",
+        "orb_listening": "📞 Listening to you...",
+        "orb_speaking": "Speaking...",
+        "orb_thinking": "Thinking response...",
+        "welcome_title": "👋 Welcome to your Local AI Voice Room!",
+        "welcome_desc": "Speak naturally and freely. You will see live word-by-word transcription, translations, saved voice notes, and real-time coaching feedback.",
+        "tip_no_limits": "💡 No time limits",
+        "tip_offline": "⚡ 100% Local & private",
+        "tip_memory": "🎯 RAG Memory & Voice Tools",
+        "input_placeholder_en": "Type a message in English...",
+        "input_placeholder_es": "Type a message in Spanish...",
+        "input_placeholder_auto": "Type or speak in English or Spanish...",
+        "call_btn_start": "Start Hands-Free Call Mode",
+        "call_btn_stop": "End Call Mode",
+        "label_mic": "🎤 Mic:",
+        "label_voice": "🗣️ AI Voice:",
+        "label_vad": "🎚️ VAD Sensitivity:",
+        "label_personality": "🎭 Personality:",
+        "label_whisper": "🌙 Whisper:",
+        "whisper_off": "Off",
+        "whisper_on": "Active",
+        "pers_coach": "🎓 Language Coach",
+        "pers_friendly": "🤗 Casual Friend",
+        "pers_tech": "💻 Senior Tech Lead",
+        "pers_executive": "👔 Executive Mentor",
+        "vad_low": "Low (Filters strong breaths and fan)",
+        "vad_med": "Medium (Recommended)",
+        "vad_high": "High (Detects soft whisper)",
+        "mic_btn_speak": "Tap to speak",
+        "mic_btn_listening": "Listening...",
+        "interrupt_btn": "⏹ Interrupt",
+        "meter_label": "Voice level:",
+        "panel_coaching": "🎯 Grammar & Coaching Feedback",
+        "panel_coaching_empty": "Speak in English to receive grammar feedback and vocabulary suggestions in real time.",
+        "panel_vocab": "📝 Vocabulary & Phrases",
+        "panel_vocab_empty": "Key phrases from your session will appear here.",
+        "panel_notes": "📌 Quick Voice Notes",
+        "panel_notes_empty": "Say \"Take a note...\" or \"Remind me...\" to save voice notes.",
+        "panel_metrics": "⚡ Real-Time Latency",
+        "metric_time": "Last Message Time:",
+        "metric_stt": "Whisper STT (Speech):",
+        "metric_ttfa": "First Audio Latency (TTFA):",
+        "metric_total": "Total Response Time:",
+        "metric_vram": "VRAM Usage:",
+        "tool_badge": "🔧 Tool: ",
+        "clear_confirm": "Do you want to clear conversation history, saved notes and vocabulary?",
+        "clear_done": "History, notes and vocabulary cleared."
+    }
+};
+
 const I18nManager = {
-    locales: {},
+    locales: DEFAULT_FALLBACK_LOCALES,
     currentLang: localStorage.getItem("ui_lang") || "es",
     isLoaded: false,
 
@@ -8,18 +121,19 @@ const I18nManager = {
         try {
             const res = await fetch("/static/locales.json");
             if (res.ok) {
-                this.locales = await res.json();
+                const data = await res.json();
+                this.locales = { ...DEFAULT_FALLBACK_LOCALES, ...data };
                 this.isLoaded = true;
             }
         } catch (e) {
-            console.warn("No se pudo cargar /static/locales.json:", e);
+            console.warn("No se pudo cargar /static/locales.json (usando respaldo en memoria):", e);
         }
 
         const sel = document.getElementById("ui-lang-select");
         if (sel) {
             sel.value = this.currentLang;
             sel.addEventListener("change", (e) => {
-                this.setLanguage(e.target.value);
+                this.setLanguage(e.target.value, true);
             });
         }
 
@@ -31,10 +145,24 @@ const I18nManager = {
         return langDict[key] || key;
     },
 
-    setLanguage(lang) {
+    setLanguage(lang, syncMode = true) {
         this.currentLang = lang;
         localStorage.setItem("ui_lang", lang);
         this.applyLanguage(lang);
+
+        if (syncMode) {
+            if (lang === "es") {
+                const btnEs = document.getElementById("btn-mode-es");
+                if (btnEs && !btnEs.classList.contains("active")) {
+                    btnEs.click();
+                }
+            } else if (lang === "en") {
+                const btnEn = document.getElementById("btn-mode-en");
+                if (btnEn && !btnEn.classList.contains("active")) {
+                    btnEn.click();
+                }
+            }
+        }
     },
 
     applyLanguage(lang) {
@@ -42,7 +170,7 @@ const I18nManager = {
         if (!t) return;
 
         const sel = document.getElementById("ui-lang-select");
-        if (sel) sel.value = lang;
+        if (sel && sel.value !== lang) sel.value = lang;
 
         const mEn = document.getElementById("btn-mode-en");
         const mEs = document.getElementById("btn-mode-es");
@@ -153,6 +281,15 @@ const I18nManager = {
         }
     }
 };
+
+// Auto-inicializar en cuanto el DOM esté listo
+if (typeof document !== "undefined") {
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", () => I18nManager.init());
+    } else {
+        I18nManager.init();
+    }
+}
 
 window.I18nManager = I18nManager;
 
