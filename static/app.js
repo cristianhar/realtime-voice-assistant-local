@@ -58,6 +58,203 @@ let peakRmsObserved = 0;
 let currentPartialBubble = null;
 let currentPartialTextEl = null;
 
+// ==========================================
+// INTERNACIONALIZACIÓN Y MULTIIDIOMA UI (i18n)
+// ==========================================
+const I18N = {
+    es: {
+        mode_en: "🇺🇸 Practicar Inglés",
+        mode_es: "🇪🇸 Español",
+        mode_auto: "🌐 Bilingüe / Auto",
+        connecting: "Conectando...",
+        connected: "Conectado (Local)",
+        disconnected: "Desconectado. Reintentando...",
+        orb_ready: "Listo para conversar",
+        orb_listening: "📞 Te escucho...",
+        orb_speaking: "Hablando...",
+        orb_thinking: "Pensando respuesta...",
+        welcome_title: "👋 ¡Bienvenido a tu Sala de Voz con IA Local!",
+        welcome_desc: "Habla libremente con naturalidad. Verás la transcripción en vivo palabra por palabra, traducciones, notas guardadas y feedback en tiempo real.",
+        tip_no_limits: "💡 Sin límites de tiempo",
+        tip_offline: "⚡ 100% Local y privado",
+        tip_memory: "🎯 Memoria RAG y herramientas",
+        input_placeholder_en: "Escribe un mensaje en inglés...",
+        input_placeholder_es: "Escribe un mensaje en español...",
+        input_placeholder_auto: "Escribe o habla en inglés o español...",
+        call_btn_start: "Iniciar Modo Llamada (Manos Libres)",
+        call_btn_stop: "Finalizar Modo Llamada",
+        label_mic: "🎤 Mic:",
+        label_voice: "🗣️ Voz IA:",
+        label_vad: "🎚️ Filtro VAD:",
+        vad_low: "Baja (Filtra respiración fuerte y ventilador)",
+        vad_med: "Media (Recomendada)",
+        vad_high: "Alta (Habla muy suave)",
+        mic_btn_speak: "Pulsar para hablar",
+        mic_btn_listening: "Escuchando...",
+        interrupt_btn: "⏹ Interrumpir",
+        meter_label: "Nivel de voz:",
+        panel_coaching: "🎯 Tutor Feedback & Grammar",
+        panel_coaching_empty: "Habla en inglés para recibir observaciones gramaticales y sugerencias de vocabulario en tiempo real.",
+        panel_vocab: "📝 Vocabulario & Frases",
+        panel_vocab_empty: "Aquí se guardarán las oraciones clave de la sesión.",
+        panel_notes: "📌 Notas Rápidas por Voz",
+        panel_notes_empty: 'Di "Toma nota de..." o "Recuérdame..." para guardar notas por voz.',
+        panel_metrics: "⚡ Rendimiento en Tiempo Real",
+        metric_time: "Hora último mensaje:",
+        metric_stt: "Whisper STT (Voz):",
+        metric_ttfa: "Latencia 1er Audio (TTFA):",
+        metric_total: "Tiempo Total Respuesta:",
+        metric_vram: "VRAM Utilizada:",
+        tool_badge: "🔧 Herramienta: ",
+        clear_confirm: "¿Deseas vaciar la base de datos de conversaciones, notas y vocabulario guardado?",
+        clear_done: "Historial, notas y vocabulario limpiados."
+    },
+    en: {
+        mode_en: "🇺🇸 Practice English",
+        mode_es: "🇪🇸 Spanish Assistant",
+        mode_auto: "🌐 Bilingual / Auto",
+        connecting: "Connecting...",
+        connected: "Connected (Local)",
+        disconnected: "Disconnected. Retrying...",
+        orb_ready: "Ready to converse",
+        orb_listening: "📞 Listening to you...",
+        orb_speaking: "Speaking...",
+        orb_thinking: "Thinking response...",
+        welcome_title: "👋 Welcome to your Local AI Voice Room!",
+        welcome_desc: "Speak naturally and freely. You will see live word-by-word transcription, translations, saved voice notes, and real-time coaching feedback.",
+        tip_no_limits: "💡 No time limits",
+        tip_offline: "⚡ 100% Local & private",
+        tip_memory: "🎯 RAG Memory & Voice Tools",
+        input_placeholder_en: "Type a message in English...",
+        input_placeholder_es: "Type a message in Spanish...",
+        input_placeholder_auto: "Type or speak in English or Spanish...",
+        call_btn_start: "Start Call Mode (Hands-Free)",
+        call_btn_stop: "End Call Mode",
+        label_mic: "🎤 Mic:",
+        label_voice: "🗣️ AI Voice:",
+        label_vad: "🎚️ VAD Filter:",
+        vad_low: "Low (Filters heavy breathing & fan)",
+        vad_med: "Medium (Recommended)",
+        vad_high: "High (Soft speech)",
+        mic_btn_speak: "Click to speak",
+        mic_btn_listening: "Listening...",
+        interrupt_btn: "⏹ Interrupt",
+        meter_label: "Voice level:",
+        panel_coaching: "🎯 Coaching Feedback & Grammar",
+        panel_coaching_empty: "Speak in English to receive grammar feedback and vocabulary suggestions in real time.",
+        panel_vocab: "📝 Vocabulary & Phrases",
+        panel_vocab_empty: "Key phrases from your session will appear here.",
+        panel_notes: "📌 Quick Voice Notes",
+        panel_notes_empty: 'Say "Take a note..." or "Remember that..." to save notes by voice.',
+        panel_metrics: "⚡ Real-Time Performance",
+        metric_time: "Last message time:",
+        metric_stt: "Whisper STT (Speech):",
+        metric_ttfa: "First Audio Latency (TTFA):",
+        metric_total: "Total Response Time:",
+        metric_vram: "VRAM Utilized:",
+        tool_badge: "🔧 Tool: ",
+        clear_confirm: "Do you want to clear the local database of conversations, notes, and saved vocabulary?",
+        clear_done: "History, notes, and vocabulary cleared."
+    }
+};
+
+let currentUiLang = localStorage.getItem("ui_lang") || "es";
+
+function setUiLanguage(lang) {
+    currentUiLang = lang;
+    localStorage.setItem("ui_lang", lang);
+    const t = I18N[lang] || I18N.es;
+
+    const btnEs = document.getElementById("ui-lang-es");
+    const btnEn = document.getElementById("ui-lang-en");
+    if (btnEs && btnEn) {
+        btnEs.classList.toggle("active", lang === "es");
+        btnEn.classList.toggle("active", lang === "en");
+    }
+
+    const mEn = document.getElementById("btn-mode-en");
+    const mEs = document.getElementById("btn-mode-es");
+    const mAuto = document.getElementById("btn-mode-auto");
+    if (mEn) mEn.innerText = t.mode_en;
+    if (mEs) mEs.innerText = t.mode_es;
+    if (mAuto) mAuto.innerText = t.mode_auto;
+
+    const wTitle = document.getElementById("welcome-title");
+    const wDesc = document.getElementById("welcome-desc");
+    const tip1 = document.getElementById("tip-1");
+    const tip2 = document.getElementById("tip-2");
+    const tip3 = document.getElementById("tip-3");
+    if (wTitle) wTitle.innerText = t.welcome_title;
+    if (wDesc) wDesc.innerText = t.welcome_desc;
+    if (tip1) tip1.innerText = t.tip_no_limits;
+    if (tip2) tip2.innerText = t.tip_offline;
+    if (tip3) tip3.innerText = t.tip_memory;
+
+    if (textInput) {
+        if (currentLanguageMode === "es") textInput.placeholder = t.input_placeholder_es;
+        else if (currentLanguageMode === "en") textInput.placeholder = t.input_placeholder_en;
+        else textInput.placeholder = t.input_placeholder_auto;
+    }
+
+    if (callBtnText) {
+        callBtnText.innerText = isCallMode ? t.call_btn_stop : t.call_btn_start;
+    }
+    if (micBtnLabel) {
+        micBtnLabel.innerText = isRecording ? t.mic_btn_listening : t.mic_btn_speak;
+    }
+    if (interruptBtn) {
+        interruptBtn.innerText = t.interrupt_btn;
+    }
+
+    const lMic = document.getElementById("label-mic");
+    const lVoice = document.getElementById("label-voice");
+    const lVad = document.getElementById("label-vad");
+    if (lMic) lMic.innerText = t.label_mic;
+    if (lVoice) lVoice.innerText = t.label_voice;
+    if (lVad) lVad.innerText = t.label_vad;
+
+    const optLow = document.getElementById("opt-vad-low");
+    const optMed = document.getElementById("opt-vad-med");
+    const optHigh = document.getElementById("opt-vad-high");
+    if (optLow) optLow.innerText = t.vad_low;
+    if (optMed) optMed.innerText = t.vad_med;
+    if (optHigh) optHigh.innerText = t.vad_high;
+
+    const mLabel = document.getElementById("meter-label-text");
+    if (mLabel) mLabel.innerText = t.meter_label;
+
+    const pCoaching = document.getElementById("panel-title-coaching");
+    const pVocab = document.getElementById("panel-title-vocab");
+    const pNotes = document.getElementById("panel-title-notes");
+    const pMetrics = document.getElementById("panel-title-metrics");
+    if (pCoaching) pCoaching.innerText = t.panel_coaching;
+    if (pVocab) pVocab.innerText = t.panel_vocab;
+    if (pNotes) pNotes.innerText = t.panel_notes;
+    if (pMetrics) pMetrics.innerText = t.panel_metrics;
+
+    const emptyCoaching = document.getElementById("empty-tip-coaching");
+    const emptyVocab = document.getElementById("empty-tip-vocab");
+    const emptyNotes = document.getElementById("empty-tip-notes");
+    if (emptyCoaching) emptyCoaching.innerText = t.panel_coaching_empty;
+    if (emptyVocab) emptyVocab.innerText = t.panel_vocab_empty;
+    if (emptyNotes) emptyNotes.innerText = t.panel_notes_empty;
+
+    const mTime = document.getElementById("metric-label-time");
+    const mStt = document.getElementById("metric-label-stt");
+    const mTts = document.getElementById("metric-label-tts");
+    const mTotal = document.getElementById("metric-label-total");
+    const mVram = document.getElementById("metric-label-vram");
+    if (mTime) mTime.innerText = t.metric_time;
+    if (mStt) mStt.innerText = t.metric_stt;
+    if (mTts) mTts.innerText = t.metric_ttfa;
+    if (mTotal) mTotal.innerText = t.metric_total;
+    if (mVram) mVram.innerText = t.metric_vram;
+
+    if (orbLabel && !isAudioPlaying && !isRecording) {
+        orbLabel.innerText = t.orb_ready;
+    }
+}
+
 function getFormattedTime() {
     const now = new Date();
     return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -969,7 +1166,35 @@ window.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Inicializar datos persistentes en el arranque
+    // Cargar perfil del usuario desde SQLite
+    async function loadUserProfile() {
+        try {
+            const res = await fetch("/api/profile");
+            if (res.ok) {
+                const profile = await res.json();
+                const badge = document.getElementById("user-profile-badge");
+                if (badge && profile.name) {
+                    badge.innerText = `👤 ${profile.name}`;
+                }
+            }
+        } catch (e) {
+            console.warn("No se pudo cargar perfil de usuario:", e);
+        }
+    }
+
+    // Listeners de idioma de interfaz UI (Español / English)
+    const btnUiEs = document.getElementById("ui-lang-es");
+    const btnUiEn = document.getElementById("ui-lang-en");
+    if (btnUiEs) {
+        btnUiEs.addEventListener("click", () => setUiLanguage("es"));
+    }
+    if (btnUiEn) {
+        btnUiEn.addEventListener("click", () => setUiLanguage("en"));
+    }
+
+    // Inicializar datos persistentes e idioma UI en el arranque
+    setUiLanguage(currentUiLang);
+    loadUserProfile();
     loadPersistentVocabulary();
     loadPersistentNotes();
     loadPersistentHistory();

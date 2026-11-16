@@ -22,15 +22,21 @@
             <div class="header-center">
                 <!-- Selector de Idioma / Modo -->
                 <div class="lang-selector-group">
-                    <button class="lang-btn active" data-mode="en" title="Tutor de conversación en inglés">🇺🇸 Practicar Inglés</button>
-                    <button class="lang-btn" data-mode="es" title="Asistente nativo en español">🇪🇸 Español</button>
-                    <button class="lang-btn" data-mode="auto" title="Detección automática bilingüe">🌐 Bilingüe / Auto</button>
+                    <button id="btn-mode-en" class="lang-btn active" data-mode="en" title="Tutor de conversación en inglés">🇺🇸 Practicar Inglés</button>
+                    <button id="btn-mode-es" class="lang-btn" data-mode="es" title="Asistente nativo en español">🇪🇸 Español</button>
+                    <button id="btn-mode-auto" class="lang-btn" data-mode="auto" title="Detección automática bilingüe">🌐 Bilingüe / Auto</button>
                 </div>
                 <div id="connection-status" class="status-indicator">
                     <span class="dot"></span> <span id="status-text">Conectando...</span>
                 </div>
             </div>
             <div class="header-right">
+                <!-- Selector de Idioma de la Interfaz UI -->
+                <div class="ui-lang-switch" title="Idioma de los menús / UI Language">
+                    <button id="ui-lang-es" class="ui-lang-btn active" data-ui-lang="es">🇪🇸 ES</button>
+                    <button id="ui-lang-en" class="ui-lang-btn" data-ui-lang="en">🇺🇸 EN</button>
+                </div>
+                <span id="user-profile-badge" class="user-badge" title="Perfil activo">👤 Cristian Arboleda</span>
                 <span class="hardware-badge">RTX CUDA · Whisper Multilingual · Kokoro</span>
             </div>
         </header>
@@ -53,12 +59,12 @@
                 <!-- Historial de Conversación con Doble Transcripción -->
                 <div id="chat-messages" class="chat-messages">
                     <div class="welcome-card">
-                        <h3>👋 Welcome to your English Practice Room!</h3>
-                        <p>Speak in English naturally. You will see both what you say and what the AI answers, along with Spanish translations and grammar feedback.</p>
+                        <h3 id="welcome-title">👋 ¡Bienvenido a tu Sala de Voz con IA Local!</h3>
+                        <p id="welcome-desc">Habla libremente con naturalidad. Verás la transcripción en vivo palabra por palabra, traducciones, notas guardadas y feedback en tiempo real.</p>
                         <div class="tips-row">
-                            <span>💡 Sin límites de tiempo</span>
-                            <span>⚡ 100% Local y privado</span>
-                            <span>🎯 Corrección en tiempo real</span>
+                            <span id="tip-1">💡 Sin límites de tiempo</span>
+                            <span id="tip-2">⚡ 100% Local y privado</span>
+                            <span id="tip-3">🎯 Memoria RAG y herramientas</span>
                         </div>
                     </div>
                 </div>
@@ -66,7 +72,7 @@
                 <!-- Barra de Entrada y Controles -->
                 <div class="controls-area">
                     <div class="text-input-bar">
-                        <input type="text" id="text-input" placeholder="O escribe en inglés si prefieres..." autocomplete="off">
+                        <input type="text" id="text-input" placeholder="Escribe un mensaje o habla por el micrófono..." autocomplete="off">
                         <button id="send-btn" class="icon-btn" title="Enviar texto">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                                 <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
@@ -85,13 +91,13 @@
                     <!-- Selector de Micrófono, Voz de IA y Sensibilidad -->
                     <div class="audio-settings-bar">
                         <div class="setting-item">
-                            <label for="mic-select">🎤 Mic:</label>
+                            <label id="label-mic" for="mic-select">🎤 Mic:</label>
                             <select id="mic-select" class="mic-select">
                                 <option value="">Cargando micrófonos...</option>
                             </select>
                         </div>
                         <div class="setting-item">
-                            <label for="voice-select">🗣️ Voz IA:</label>
+                            <label id="label-voice" for="voice-select">🗣️ Voz IA:</label>
                             <select id="voice-select" class="voice-select">
                                 <optgroup label="🇪🇸 Español Nativo">
                                     <option value="ef_dora" data-lang="es">🇪🇸 Dora (Femenina - Cálida)</option>
@@ -104,11 +110,11 @@
                             </select>
                         </div>
                         <div class="setting-item">
-                            <label for="vad-select" title="Filtra respiraciones y ruidos de fondo">🎚️ Filtro VAD:</label>
+                            <label id="label-vad" for="vad-select" title="Filtra respiraciones y ruidos de fondo">🎚️ Filtro VAD:</label>
                             <select id="vad-select" class="vad-select" title="Sensibilidad del micrófono">
-                                <option value="0.045">Baja (Filtra respiración fuerte y ventilador)</option>
-                                <option value="0.030" selected>Media (Recomendada)</option>
-                                <option value="0.018">Alta (Habla muy suave)</option>
+                                <option id="opt-vad-low" value="0.045">Baja (Filtra respiración fuerte y ventilador)</option>
+                                <option id="opt-vad-med" value="0.030" selected>Media (Recomendada)</option>
+                                <option id="opt-vad-high" value="0.018">Alta (Habla muy suave)</option>
                             </select>
                         </div>
                     </div>
@@ -129,9 +135,12 @@
 
                     <!-- Indicador visual de volumen de micrófono en tiempo real -->
                     <div id="mic-meter-container" class="mic-meter-container hidden">
-                        <span class="meter-label">Nivel de voz:</span>
+                        <span id="meter-label-text" class="meter-label">Nivel de voz:</span>
                         <div class="meter-bar-bg" title="Tu voz debe pasar la línea roja para activarse (filtra respiraciones)">
                             <div id="meter-bar-fill" class="meter-bar-fill"></div>
+                            <div id="meter-threshold-line" class="meter-threshold-line"></div>
+                        </div>
+                    </div>
                             <div id="meter-threshold-line" class="meter-threshold-line"></div>
                         </div>
                     </div>
@@ -143,10 +152,10 @@
                 <!-- Panel de Tips Gramaticales -->
                 <div class="panel-card coaching-card">
                     <div class="panel-header">
-                        <h4>🎯 Tutor Feedback & Grammar</h4>
+                        <h4 id="panel-title-coaching">🎯 Tutor Feedback & Grammar</h4>
                     </div>
                     <div id="coaching-content" class="coaching-content">
-                        <div class="empty-tip">
+                        <div class="empty-tip" id="empty-tip-coaching">
                             Habla en inglés para recibir observaciones gramaticales y sugerencias de vocabulario en tiempo real.
                         </div>
                     </div>
@@ -155,49 +164,49 @@
                 <!-- Vocabulario Aprendido / Frases clave -->
                 <div class="panel-card vocabulary-card">
                     <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        <h4>📝 Vocabulario & Frases</h4>
+                        <h4 id="panel-title-vocab">📝 Vocabulario & Frases</h4>
                         <button id="clear-history-btn" class="mini-icon-btn" title="Limpiar historial y vocabulario local">🗑️</button>
                     </div>
                     <div id="vocabulary-list" class="vocabulary-list">
-                        <div class="empty-tip">Aquí se guardarán las oraciones clave de la sesión.</div>
+                        <div class="empty-tip" id="empty-tip-vocab">Aquí se guardarán las oraciones clave de la sesión.</div>
                     </div>
                 </div>
 
                 <!-- Notas y Recordatorios de Voz (Tool Calling) -->
                 <div class="panel-card notes-card">
                     <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        <h4>📌 Notas Rápidas por Voz</h4>
+                        <h4 id="panel-title-notes">📌 Notas Rápidas por Voz</h4>
                         <span class="badge" style="font-size: 0.72rem; padding: 2px 6px;">Tool Calling</span>
                     </div>
                     <div id="notes-list" class="notes-list">
-                        <div class="empty-tip">Di "Toma nota de..." o "Recuérdame..." para guardar notas por voz.</div>
+                        <div class="empty-tip" id="empty-tip-notes">Di "Toma nota de..." o "Recuérdame..." para guardar notas por voz.</div>
                     </div>
                 </div>
 
                 <!-- Métricas de Latencia en Vivo -->
                 <div class="panel-card metrics-card">
                     <div class="panel-header">
-                        <h4>⚡ Rendimiento en Tiempo Real</h4>
+                        <h4 id="panel-title-metrics">⚡ Rendimiento en Tiempo Real</h4>
                     </div>
                     <div class="metrics-grid">
                         <div class="metric-item">
-                            <span class="metric-label">Hora último mensaje:</span>
+                            <span id="metric-label-time" class="metric-label">Hora último mensaje:</span>
                             <span id="metric-time" class="metric-value">--:--:--</span>
                         </div>
                         <div class="metric-item">
-                            <span class="metric-label">Whisper STT (Voz):</span>
+                            <span id="metric-label-stt" class="metric-label">Whisper STT (Voz):</span>
                             <span id="metric-stt" class="metric-value">-- ms</span>
                         </div>
                         <div class="metric-item">
-                            <span class="metric-label">Latencia 1er Audio (TTFA):</span>
+                            <span id="metric-label-tts" class="metric-label">Latencia 1er Audio (TTFA):</span>
                             <span id="metric-tts" class="metric-value">-- ms</span>
                         </div>
                         <div class="metric-item">
-                            <span class="metric-label">Tiempo Total Respuesta:</span>
+                            <span id="metric-label-total" class="metric-label">Tiempo Total Respuesta:</span>
                             <span id="metric-total" class="metric-value">-- s</span>
                         </div>
                         <div class="metric-item">
-                            <span class="metric-label">VRAM Utilizada:</span>
+                            <span id="metric-label-vram" class="metric-label">VRAM Utilizada:</span>
                             <span class="metric-value">~2.1 GB / 6 GB</span>
                         </div>
                     </div>
