@@ -155,6 +155,288 @@ const I18N = {
         tool_badge: "🔧 Tool: ",
         clear_confirm: "Do you want to clear the local database of conversations, notes, and saved vocabulary?",
         clear_done: "History, notes, and vocabulary cleared."
+    },
+    pt: {
+        mode_en: "🇺🇸 Praticar Inglês",
+        mode_es: "🇪🇸 Assistente Espanhol",
+        mode_auto: "🌐 Bilíngue / Auto",
+        connecting: "Conectando...",
+        connected: "Conectado (Local)",
+        disconnected: "Desconectado. Tentando novamente...",
+        orb_ready: "Pronto para conversar",
+        orb_listening: "📞 Ouvindo você...",
+        orb_speaking: "Falando...",
+        orb_thinking: "Pensando na resposta...",
+        welcome_title: "👋 Bem-vindo à sua Sala de Voz IA Local!",
+        welcome_desc: "Fale naturalmente. Você verá transcrição ao vivo palavra por palavra, notas salvas e feedback em tempo real.",
+        tip_no_limits: "💡 Sem limites de tempo",
+        tip_offline: "⚡ 100% Local e privado",
+        tip_memory: "🎯 Memória RAG e ferramentas por voz",
+        input_placeholder_en: "Digite uma mensagem em inglês...",
+        input_placeholder_es: "Digite uma mensagem em espanhol...",
+        input_placeholder_auto: "Digite ou fale em qualquer idioma...",
+        call_btn_start: "Iniciar Modo Chamada (Mãos Livres)",
+        call_btn_stop: "Encerrar Modo Chamada",
+        label_mic: "🎤 Microfone:",
+        label_voice: "🗣️ Voz da IA:",
+        label_vad: "🎚️ Filtro VAD:",
+        vad_low: "Baixa (Filtra respiração forte e ventilador)",
+        vad_med: "Média (Recomendada)",
+        vad_high: "Alta (Fala suave)",
+        mic_btn_speak: "Clique para falar",
+        mic_btn_listening: "Ouvindo...",
+        interrupt_btn: "⏹ Interromper",
+        meter_label: "Nível de voz:",
+        panel_coaching: "🎯 Feedback do Tutor & Gramática",
+        panel_coaching_empty: "Fale em inglês para receber observações gramaticais em tempo real.",
+        panel_vocab: "📝 Vocabulário & Frases",
+        panel_vocab_empty: "As frases-chave da sessão serão salvas aqui.",
+        panel_notes: "📌 Notas Rápidas de Voz",
+        panel_notes_empty: 'Diga "Anote que..." ou "Lembre-me de..." para salvar notas.',
+        panel_metrics: "⚡ Desempenho em Tempo Real",
+        metric_time: "Hora da última mensagem:",
+        metric_stt: "Whisper STT (Voz):",
+        metric_ttfa: "Latência do 1º Áudio (TTFA):",
+        metric_total: "Tempo Total de Resposta:",
+        metric_vram: "VRAM Utilizada:",
+        tool_badge: "🔧 Ferramenta: ",
+        clear_confirm: "Deseja limpar todo o histórico de conversas, notas e vocabulário?",
+        clear_done: "Histórico e notas limpos."
+    },
+    fr: {
+        mode_en: "🇺🇸 Pratiquer l'anglais",
+        mode_es: "🇪🇸 Assistant espagnol",
+        mode_auto: "🌐 Bilingue / Auto",
+        connecting: "Connexion...",
+        connected: "Connecté (Local)",
+        disconnected: "Déconnecté. Nouvelle tentative...",
+        orb_ready: "Prêt à converser",
+        orb_listening: "📞 Je vous écoute...",
+        orb_speaking: "Parle...",
+        orb_thinking: "Réflexion en cours...",
+        welcome_title: "👋 Bienvenue dans votre salon vocal IA local !",
+        welcome_desc: "Parlez naturellement. Vous verrez la transcription mot à mot en direct, les traductions et les notes vocales.",
+        tip_no_limits: "💡 Sans limite de temps",
+        tip_offline: "⚡ 100% Local et privé",
+        tip_memory: "🎯 Mémoire RAG et outils vocaux",
+        input_placeholder_en: "Tapez un message en anglais...",
+        input_placeholder_es: "Tapez un message en espagnol...",
+        input_placeholder_auto: "Tapez ou parlez librement...",
+        call_btn_start: "Mode Appel Mains Libres",
+        call_btn_stop: "Terminer l'appel",
+        label_mic: "🎤 Micro :",
+        label_voice: "🗣️ Voix IA :",
+        label_vad: "🎚️ Filtre VAD :",
+        vad_low: "Faible (Filtre bruits et souffle)",
+        vad_med: "Moyen (Recommandé)",
+        vad_high: "Élevé (Voix douce)",
+        mic_btn_speak: "Cliquer pour parler",
+        mic_btn_listening: "Écoute en cours...",
+        interrupt_btn: "⏹ Interrompre",
+        meter_label: "Niveau vocal :",
+        panel_coaching: "🎯 Coaching & Grammaire",
+        panel_coaching_empty: "Parlez en anglais pour recevoir des corrections en temps réel.",
+        panel_vocab: "📝 Vocabulaire & Phrases",
+        panel_vocab_empty: "Les phrases clés de la session seront enregistrées ici.",
+        panel_notes: "📌 Notes Vocales Rapides",
+        panel_notes_empty: 'Dites "Prends note de..." pour enregistrer une note.',
+        panel_metrics: "⚡ Performances en Direct",
+        metric_time: "Dernier message :",
+        metric_stt: "Whisper STT (Voix) :",
+        metric_ttfa: "Latence 1er Audio (TTFA) :",
+        metric_total: "Temps Total :",
+        metric_vram: "VRAM Utilisée :",
+        tool_badge: "🔧 Outil : ",
+        clear_confirm: "Voulez-vous effacer l'historique, les notes et le vocabulaire ?",
+        clear_done: "Historique et notes effacés."
+    },
+    de: {
+        mode_en: "🇺🇸 Englisch üben",
+        mode_es: "🇪🇸 Spanisch-Assistent",
+        mode_auto: "🌐 Zweisprachig / Auto",
+        connecting: "Verbinde...",
+        connected: "Verbunden (Lokal)",
+        disconnected: "Getrennt. Wiederhole...",
+        orb_ready: "Bereit zum Gespräch",
+        orb_listening: "📞 Ich höre zu...",
+        orb_speaking: "Spricht...",
+        orb_thinking: "Denkt nach...",
+        welcome_title: "👋 Willkommen im lokalen KI-Sprachraum!",
+        welcome_desc: "Sprechen Sie ganz natürlich. Sie sehen Live-Transkriptionen Wort für Wort, Notizen und Coaching in Echtzeit.",
+        tip_no_limits: "💡 Kein Zeitlimit",
+        tip_offline: "⚡ 100% Lokal & privat",
+        tip_memory: "🎯 RAG-Gedächtnis & Sprach-Tools",
+        input_placeholder_en: "Schreiben Sie auf Englisch...",
+        input_placeholder_es: "Schreiben Sie auf Spanisch...",
+        input_placeholder_auto: "Schreiben oder sprechen Sie frei...",
+        call_btn_start: "Anrufmodus starten (Freisprechen)",
+        call_btn_stop: "Anrufmodus beenden",
+        label_mic: "🎤 Mikrofon:",
+        label_voice: "🗣️ KI-Stimme:",
+        label_vad: "🎚️ VAD-Filter:",
+        vad_low: "Niedrig (Filtert Atemgeräusche)",
+        vad_med: "Mittel (Empfohlen)",
+        vad_high: "Hoch (Leise Sprache)",
+        mic_btn_speak: "Klicken zum Sprechen",
+        mic_btn_listening: "Zuhören...",
+        interrupt_btn: "⏹ Unterbrechen",
+        meter_label: "Sprachpegel:",
+        panel_coaching: "🎯 Coaching & Grammatik",
+        panel_coaching_empty: "Sprechen Sie auf Englisch, um Grammatiktipps in Echtzeit zu erhalten.",
+        panel_vocab: "📝 Vokabeln & Sätze",
+        panel_vocab_empty: "Wichtige Sätze werden hier gespeichert.",
+        panel_notes: "📌 Schnelle Sprachnotizen",
+        panel_notes_empty: 'Sagen Sie "Notiere..." um eine Notiz zu speichern.',
+        panel_metrics: "⚡ Echtzeit-Metriken",
+        metric_time: "Letzte Nachricht:",
+        metric_stt: "Whisper STT (Sprache):",
+        metric_ttfa: "Erste Audio-Latenz (TTFA):",
+        metric_total: "Gesamte Antwortzeit:",
+        metric_vram: "VRAM-Nutzung:",
+        tool_badge: "🔧 Werkzeug: ",
+        clear_confirm: "Möchten Sie den gesamten Verlauf, Notizen und Vokabeln löschen?",
+        clear_done: "Verlauf und Notizen gelöscht."
+    },
+    it: {
+        mode_en: "🇺🇸 Pratica l'inglese",
+        mode_es: "🇪🇸 Assistente spagnolo",
+        mode_auto: "🌐 Bilingue / Auto",
+        connecting: "Connessione...",
+        connected: "Connesso (Locale)",
+        disconnected: "Disconnesso. Riconnessione...",
+        orb_ready: "Pronto a conversare",
+        orb_listening: "📞 Ti ascolto...",
+        orb_speaking: "Parlando...",
+        orb_thinking: "Elaborazione risposta...",
+        welcome_title: "👋 Benvenuto nella tua stanza vocale IA locale!",
+        welcome_desc: "Parla liberamente. Vedrai la trascrizione parola per parola in tempo reale, note salvate e feedback.",
+        tip_no_limits: "💡 Nessun limite di tempo",
+        tip_offline: "⚡ 100% Locale e privato",
+        tip_memory: "🎯 Memoria RAG e strumenti vocali",
+        input_placeholder_en: "Scrivi un messaggio in inglese...",
+        input_placeholder_es: "Scrivi un messaggio in spagnolo...",
+        input_placeholder_auto: "Scrivi o parla liberamente...",
+        call_btn_start: "Avvia Modalità Chiamata (Vivavoce)",
+        call_btn_stop: "Termina Chiamata",
+        label_mic: "🎤 Microfono:",
+        label_voice: "🗣️ Voce IA:",
+        label_vad: "🎚️ Filtro VAD:",
+        vad_low: "Bassa (Filtra respiro forte e ventole)",
+        vad_med: "Media (Consigliata)",
+        vad_high: "Alta (Voce bassa)",
+        mic_btn_speak: "Clicca per parlare",
+        mic_btn_listening: "In ascolto...",
+        interrupt_btn: "⏹ Interrompi",
+        meter_label: "Livello voce:",
+        panel_coaching: "🎯 Feedback del Tutor & Grammatica",
+        panel_coaching_empty: "Parla in inglese per ricevere suggerimenti grammaticali immediati.",
+        panel_vocab: "📝 Vocabolario & Frasi",
+        panel_vocab_empty: "Le frasi chiave della sessione appariranno qui.",
+        panel_notes: "📌 Note Vocali Rapide",
+        panel_notes_empty: 'Dì "Prendi nota di..." per salvare le tue note.',
+        panel_metrics: "⚡ Prestazioni in Tempo Reale",
+        metric_time: "Ultimo messaggio:",
+        metric_stt: "Whisper STT (Voce):",
+        metric_ttfa: "Latenza 1º Audio (TTFA):",
+        metric_total: "Tempo Totale:",
+        metric_vram: "VRAM Utilizzata:",
+        tool_badge: "🔧 Strumento: ",
+        clear_confirm: "Vuoi cancellare la cronologia, le note e il vocabolario?",
+        clear_done: "Cronologia e note cancellate."
+    },
+    ja: {
+        mode_en: "🇺🇸 英語の練習",
+        mode_es: "🇪🇸 スペイン語アシスタント",
+        mode_auto: "🌐 バイリンガル / 自動",
+        connecting: "接続中...",
+        connected: "接続済み (ローカル)",
+        disconnected: "切断されました。再試行中...",
+        orb_ready: "会話の準備完了",
+        orb_listening: "📞 聞いています...",
+        orb_speaking: "発話中...",
+        orb_thinking: "考え中...",
+        welcome_title: "👋 ローカルAI音声ルームへようこそ！",
+        welcome_desc: "自由に話しかけてください。リアルタイムの文字起こし、音声メモ、文法フィードバックが表示されます。",
+        tip_no_limits: "💡 時間無制限",
+        tip_offline: "⚡ 完全ローカル＆プライベート",
+        tip_memory: "🎯 RAGメモリ＆音声ツール",
+        input_placeholder_en: "英語でメッセージを入力...",
+        input_placeholder_es: "スペイン語でメッセージを入力...",
+        input_placeholder_auto: "文字入力またはマイクで発話...",
+        call_btn_start: "通話モード開始 (ハンズフリー)",
+        call_btn_stop: "通話を終了",
+        label_mic: "🎤 マイク:",
+        label_voice: "🗣️ AI音声:",
+        label_vad: "🎚️ VAD感度:",
+        vad_low: "低 (呼吸音やファンをカット)",
+        vad_med: "中 (推奨)",
+        vad_high: "高 (小声用)",
+        mic_btn_speak: "クリックして話す",
+        mic_btn_listening: "聞き取り中...",
+        interrupt_btn: "⏹ 割り込み中断",
+        meter_label: "音声レベル:",
+        panel_coaching: "🎯 チューター指導＆文法",
+        panel_coaching_empty: "英語で話すとリアルタイムで文法と表現のアドバイスが表示されます。",
+        panel_vocab: "📝 語彙＆フレーズ",
+        panel_vocab_empty: "練習した重要フレーズがここに保存されます。",
+        panel_notes: "📌 音声クイックメモ",
+        panel_notes_empty: "「〜をメモして」と言うと音声でメモを保存できます。",
+        panel_metrics: "⚡ リアルタイム性能メトリクス",
+        metric_time: "最終発言時刻:",
+        metric_stt: "Whisper STT (音声認識):",
+        metric_ttfa: "初回音声遅延 (TTFA):",
+        metric_total: "合計応答時間:",
+        metric_vram: "使用VRAM:",
+        tool_badge: "🔧 ツール: ",
+        clear_confirm: "すべての履歴、メモ、単語データを削除しますか？",
+        clear_done: "履歴とメモを削除しました。"
+    },
+    zh: {
+        mode_en: "🇺🇸 练习英语",
+        mode_es: "🇪🇸 西班牙语助手",
+        mode_auto: "🌐 双语 / 自动",
+        connecting: "正在连接...",
+        connected: "已连接 (本地)",
+        disconnected: "已断开连接。重试中...",
+        orb_ready: "随时可以对话",
+        orb_listening: "📞 正在聆听...",
+        orb_speaking: "正在说话...",
+        orb_thinking: "正在思考...",
+        welcome_title: "👋 欢迎进入本地AI语音对话室！",
+        welcome_desc: "请自然开口说话。您将看到实时的逐词转录、双语翻译、语音笔记及语法纠错反馈。",
+        tip_no_limits: "💡 无时间限制",
+        tip_offline: "⚡ 100% 本地运行与隐私保护",
+        tip_memory: "🎯 RAG长期记忆与语音工具调用",
+        input_placeholder_en: "输入英文消息...",
+        input_placeholder_es: "输入西班牙语消息...",
+        input_placeholder_auto: "键盘输入或直接按麦克风说话...",
+        call_btn_start: "开启通话模式 (免提连续对话)",
+        call_btn_stop: "结束通话",
+        label_mic: "🎤 麦克风:",
+        label_voice: "🗣️ AI声音:",
+        label_vad: "🎚️ VAD静音阈值:",
+        vad_low: "低 (过滤粗重呼吸与风扇噪音)",
+        vad_med: "中 (推荐标准)",
+        vad_high: "高 (适合低声耳语)",
+        mic_btn_speak: "按住说话",
+        mic_btn_listening: "正在聆听...",
+        interrupt_btn: "⏹ 打断AI发音",
+        meter_label: "音频音量:",
+        panel_coaching: "🎯 导师指导与语法教学",
+        panel_coaching_empty: "使用英语说话可实时获得语法纠错与表达建议。",
+        panel_vocab: "📝 词汇与重点句型",
+        panel_vocab_empty: "本次对话的关键句子将自动保存在这里。",
+        panel_notes: "📌 语音快速备忘录",
+        panel_notes_empty: '请说 "帮我记下..." 即可通过语音保存备忘。',
+        panel_metrics: "⚡ 实时推理性能指标",
+        metric_time: "最后消息时间:",
+        metric_stt: "Whisper语音识别 (STT):",
+        metric_ttfa: "首句出声延迟 (TTFA):",
+        metric_total: "总计响应耗时:",
+        metric_vram: "显存占用 (VRAM):",
+        tool_badge: "🔧 调用工具: ",
+        clear_confirm: "确定要清空本地数据库中的所有历史记录、备忘与词汇吗？",
+        clear_done: "历史与备忘已成功清空。"
     }
 };
 
@@ -164,6 +446,11 @@ function setUiLanguage(lang) {
     currentUiLang = lang;
     localStorage.setItem("ui_lang", lang);
     const t = I18N[lang] || I18N.es;
+
+    const sel = document.getElementById("ui-lang-select");
+    if (sel) {
+        sel.value = lang;
+    }
 
     const btnEs = document.getElementById("ui-lang-es");
     const btnEn = document.getElementById("ui-lang-en");
@@ -1182,14 +1469,55 @@ window.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Listeners de idioma de interfaz UI (Español / English)
-    const btnUiEs = document.getElementById("ui-lang-es");
-    const btnUiEn = document.getElementById("ui-lang-en");
-    if (btnUiEs) {
-        btnUiEs.addEventListener("click", () => setUiLanguage("es"));
+    // Listener del selector global de idioma UI (8 Idiomas)
+    const uiLangSelect = document.getElementById("ui-lang-select");
+    if (uiLangSelect) {
+        uiLangSelect.value = currentUiLang;
+        uiLangSelect.addEventListener("change", (e) => {
+            setUiLanguage(e.target.value);
+        });
     }
-    if (btnUiEn) {
-        btnUiEn.addEventListener("click", () => setUiLanguage("en"));
+
+    // Exportar sesión completa de voz a Markdown
+    function exportSessionToMarkdown() {
+        const bubbles = document.querySelectorAll(".message-bubble");
+        if (!bubbles || bubbles.length === 0) {
+            alert(currentUiLang === "es" ? "No hay intervenciones en la sesión para exportar." : "No messages in session to export.");
+            return;
+        }
+        let md = `# 🎙️ Sesión de Asistente de Voz Local (Exportada)\n\n`;
+        md += `* **Usuario:** Cristian Arboleda\n`;
+        md += `* **Fecha:** ${new Date().toLocaleString()}\n`;
+        md += `* **Idioma UI:** ${currentUiLang.toUpperCase()}\n\n---\n\n`;
+
+        bubbles.forEach(b => {
+            const role = b.classList.contains("user") ? "👤 Usuario" : "🤖 Asistente";
+            const timeEl = b.querySelector(".bubble-time");
+            const time = timeEl ? ` [${timeEl.innerText}]` : "";
+            const textEl = b.querySelector(".bubble-text-en");
+            const text = textEl ? textEl.innerText.trim() : "";
+            const trEl = b.querySelector(".bubble-text-es");
+            const tr = trEl ? trEl.innerText.trim() : "";
+
+            md += `### ${role}${time}\n${text}\n`;
+            if (tr) md += `> ${tr}\n`;
+            md += `\n`;
+        });
+
+        const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `voice-session-${new Date().toISOString().slice(0, 10)}.md`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    const exportHistoryBtn = document.getElementById("export-history-btn");
+    if (exportHistoryBtn) {
+        exportHistoryBtn.addEventListener("click", exportSessionToMarkdown);
     }
 
     // Inicializar datos persistentes e idioma UI en el arranque

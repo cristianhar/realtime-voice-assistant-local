@@ -144,37 +144,35 @@ body {
     border-radius: 12px;
 }
 
-/* Selector de Idioma de la Interfaz (UI i18n) */
+/* Selector de Idioma de la Interfaz (UI i18n Global) */
 .ui-lang-switch {
     display: flex;
+    align-items: center;
+    gap: 6px;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    padding: 2px;
-    gap: 2px;
+    padding: 3px 8px;
 }
 
-.ui-lang-btn {
+.globe-icon {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.ui-lang-select {
     background: transparent;
     border: none;
-    color: var(--text-secondary);
-    padding: 4px 10px;
+    color: var(--text-primary);
     font-size: 0.78rem;
     font-weight: 600;
-    border-radius: 4px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    outline: none;
 }
 
-.ui-lang-btn:hover {
-    color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.08);
-}
-
-.ui-lang-btn.active {
-    background: var(--accent-blue);
+.ui-lang-select option {
+    background-color: #1e293b;
     color: #ffffff;
-    box-shadow: 0 0 12px rgba(59, 130, 246, 0.45);
 }
 
 /* Badge de Perfil de Usuario */

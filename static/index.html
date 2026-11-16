@@ -31,10 +31,19 @@
                 </div>
             </div>
             <div class="header-right">
-                <!-- Selector de Idioma de la Interfaz UI -->
-                <div class="ui-lang-switch" title="Idioma de los menús / UI Language">
-                    <button id="ui-lang-es" class="ui-lang-btn active" data-ui-lang="es">🇪🇸 ES</button>
-                    <button id="ui-lang-en" class="ui-lang-btn" data-ui-lang="en">🇺🇸 EN</button>
+                <!-- Selector Global de Idioma UI (8 Idiomas Internacionales) -->
+                <div class="ui-lang-switch" title="Language / Idioma de la interfaz">
+                    <span class="globe-icon">🌐</span>
+                    <select id="ui-lang-select" class="ui-lang-select">
+                        <option value="es">🇪🇸 Español</option>
+                        <option value="en">🇺🇸 English</option>
+                        <option value="pt">🇧🇷 Português</option>
+                        <option value="fr">🇫🇷 Français</option>
+                        <option value="de">🇩🇪 Deutsch</option>
+                        <option value="it">🇮🇹 Italiano</option>
+                        <option value="ja">🇯🇵 日本語</option>
+                        <option value="zh">🇨🇳 简体中文</option>
+                    </select>
                 </div>
                 <span id="user-profile-badge" class="user-badge" title="Perfil activo">👤 Cristian Arboleda</span>
                 <span class="hardware-badge">RTX CUDA · Whisper Multilingual · Kokoro</span>
@@ -165,7 +174,10 @@
                 <div class="panel-card vocabulary-card">
                     <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
                         <h4 id="panel-title-vocab">📝 Vocabulario & Frases</h4>
-                        <button id="clear-history-btn" class="mini-icon-btn" title="Limpiar historial y vocabulario local">🗑️</button>
+                        <div style="display: flex; gap: 4px;">
+                            <button id="export-history-btn" class="mini-icon-btn" title="Exportar notas y práctica a Markdown">📥</button>
+                            <button id="clear-history-btn" class="mini-icon-btn" title="Limpiar historial y vocabulario local">🗑️</button>
+                        </div>
                     </div>
                     <div id="vocabulary-list" class="vocabulary-list">
                         <div class="empty-tip" id="empty-tip-vocab">Aquí se guardarán las oraciones clave de la sesión.</div>
