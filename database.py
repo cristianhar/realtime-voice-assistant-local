@@ -4,6 +4,7 @@ import re
 import json
 import time
 import urllib.request
+import threading
 from typing import List, Dict, Optional, Any
 import numpy as np
 
@@ -249,7 +250,11 @@ def compute_embedding(text: str) -> Optional[np.ndarray]:
 
     # 2. Inferencia en Ollama /api/embeddings
     try:
-        data = json.dumps({"model": "llama3.2:3b", "prompt": clean_t}).encode("utf-8")
+        data = json.dumps({
+            "model": "llama3.2:3b",
+            "prompt": clean_t,
+            "keep_alive": -1
+        }).encode("utf-8")
         req = urllib.request.Request(
             "http://127.0.0.1:11434/api/embeddings",
             data=data,
@@ -310,11 +315,14 @@ def save_voice_note(content: str, title: Optional[str] = None) -> int:
             pass
         conn.commit()
 
-    # Indexar embedding semántico denso
-    try:
-        index_note_embedding(note_id, clean_title, clean_content)
-    except Exception:
-        pass
+    # Indexar embedding semántico denso en segundo plano para latencia ultrabaja (<2ms)
+    def _async_index(nid: int, t: str, c: str):
+        try:
+            index_note_embedding(nid, t, c)
+        except Exception:
+            pass
+
+    threading.Thread(target=_async_index, args=(note_id, clean_title, clean_content), daemon=True).start()
 
     return note_id
 
@@ -343,7 +351,7 @@ def set_user_profile_value(key: str, value: str):
         """, (key, value.strip()))
         conn.commit()
 
-def search_dense_memory(query: str, top_k: int = 3, threshold: float = 0.58) -> List[Dict[str, Any]]:
+def search_dense_memory(query: str, top_k: int = 3, threshold: float = 0.50) -> List[Dict[str, Any]]:
     """
     Búsqueda semántica densa por similitud de coseno en la memoria de notas.
     Encuentra coincidencias por significado conceptual aunque las palabras exactas no coincidan.
@@ -459,7 +467,7 @@ def get_smart_memory_context(query: Optional[str] = None) -> str:
             has_inquiry = True
 
             # Vector Dense Search (Cosine similarity)
-            dense_notes = search_dense_memory(query, top_k=3, threshold=0.58)
+            dense_notes = search_dense_memory(query, top_k=3, threshold=0.50)
             # FTS5 Keyword Search
             fts_results = search_fts_memory(query, limit=3)
 
