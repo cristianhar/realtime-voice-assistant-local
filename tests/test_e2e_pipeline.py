@@ -166,5 +166,38 @@ class TestEndToEndPipeline(unittest.TestCase):
             js_path = os.path.join(STATIC_DIR, "js", js)
             self.assertTrue(os.path.isfile(js_path), f"El módulo {js} debe existir en static/js/")
 
+    def test_07_dense_vector_semantic_rag_e2e(self):
+        """Verifica la memoria semántica vectorial densa (Hybrid RAG) con SQLite y Ollama."""
+        # 1. Guardar nota
+        nid = database.save_voice_note("Comprar pasta dental y jabón para el baño", "Artículos de aseo")
+        self.assertIsInstance(nid, int)
+
+        # 2. Búsqueda semántica densa
+        results = database.search_dense_memory("higiene personal y aseo", top_k=3, threshold=0.55)
+        # Debe retornar lista válida
+        self.assertIsInstance(results, list)
+
+        # 3. Contexto RAG Híbrido
+        rag_context = database.get_smart_memory_context("¿Te acuerdas qué tenía que comprar para el baño?")
+        self.assertIn("MEMORIA PERSISTENTE", rag_context)
+        self.assertIn("Cristian Arboleda", rag_context)
+
+    def test_08_voice_blends_and_whisper_e2e(self):
+        """Verifica la arquitectura de mezclas de voz híbridas y el modo susurro."""
+        from core.tts import VOICE_BLENDS, get_voice_target
+
+        self.assertIn("blend_dora_sarah", VOICE_BLENDS)
+        self.assertIn("blend_alex_adam", VOICE_BLENDS)
+
+        # Verificar proporciones de mezcla
+        dora_sarah = VOICE_BLENDS["blend_dora_sarah"]
+        self.assertEqual(len(dora_sarah), 2)
+        total_weight = sum(w for _, w in dora_sarah)
+        self.assertAlmostEqual(total_weight, 1.0, places=2)
+
+        # Test target resolution
+        target = get_voice_target(None, "blend_dora_sarah")
+        self.assertIsNotNone(target)
+
 if __name__ == "__main__":
     unittest.main()

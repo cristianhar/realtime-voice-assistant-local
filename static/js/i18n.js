@@ -87,10 +87,16 @@ const I18nManager = {
         const lVoice = document.getElementById("label-voice");
         const lVad = document.getElementById("label-vad");
         const lPers = document.getElementById("label-personality");
+        const lWhisper = document.getElementById("label-whisper");
+        const whisperBtnLabel = document.getElementById("whisper-btn-label");
         if (lMic) lMic.innerText = t.label_mic;
         if (lVoice) lVoice.innerText = t.label_voice;
         if (lVad) lVad.innerText = t.label_vad;
         if (lPers && t.label_personality) lPers.innerText = t.label_personality;
+        if (lWhisper && t.label_whisper) lWhisper.innerText = t.label_whisper;
+        if (whisperBtnLabel) {
+            whisperBtnLabel.innerText = window.isWhisperMode ? (t.whisper_on || "Activado") : (t.whisper_off || "Desactivado");
+        }
 
         const personalitySelect = document.getElementById("personality-select");
         if (personalitySelect && t.pers_coach) {

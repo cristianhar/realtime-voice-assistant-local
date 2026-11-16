@@ -49,7 +49,10 @@
     "metric_vram": "VRAM Utilizada:",
     "tool_badge": "🔧 Herramienta: ",
     "clear_confirm": "¿Deseas vaciar la base de datos de conversaciones, notas y vocabulario guardado?",
-    "clear_done": "Historial, notas y vocabulario limpiados."
+    "clear_done": "Historial, notas y vocabulario limpiados.",
+    "label_whisper": "🌙 Susurro:",
+    "whisper_off": "Desactivado",
+    "whisper_on": "Activado"
   },
   "en": {
     "mode_en": "🇺🇸 Practice English",
@@ -101,7 +104,10 @@
     "metric_vram": "VRAM Utilized:",
     "tool_badge": "🔧 Tool: ",
     "clear_confirm": "Do you want to clear the local database of conversations, notes, and saved vocabulary?",
-    "clear_done": "History, notes, and vocabulary cleared."
+    "clear_done": "History, notes, and vocabulary cleared.",
+    "label_whisper": "🌙 Whisper:",
+    "whisper_off": "Off",
+    "whisper_on": "Active"
   },
   "pt": {
     "mode_en": "🇺🇸 Praticar Inglês",
@@ -153,7 +159,10 @@
     "metric_vram": "VRAM Utilizada:",
     "tool_badge": "🔧 Ferramenta: ",
     "clear_confirm": "Deseja limpar todo o histórico de conversas, notas e vocabulário?",
-    "clear_done": "Histórico e notas limpos."
+    "clear_done": "Histórico e notas limpos.",
+    "label_whisper": "🌙 Sussurro:",
+    "whisper_off": "Desligado",
+    "whisper_on": "Ativado"
   },
   "fr": {
     "mode_en": "🇺🇸 Pratiquer l'anglais",
@@ -205,7 +214,10 @@
     "metric_vram": "VRAM Utilisée :",
     "tool_badge": "🔧 Outil : ",
     "clear_confirm": "Voulez-vous effacer l'historique, les notes et le vocabulaire ?",
-    "clear_done": "Historique et notes effacés."
+    "clear_done": "Historique et notes effacés.",
+    "label_whisper": "🌙 Chuchotement:",
+    "whisper_off": "Désactivé",
+    "whisper_on": "Activé"
   },
   "de": {
     "mode_en": "🇺🇸 Englisch üben",
@@ -257,7 +269,10 @@
     "metric_vram": "VRAM-Nutzung:",
     "tool_badge": "🔧 Werkzeug: ",
     "clear_confirm": "Möchten Sie den gesamten Verlauf, Notizen und Vokabeln löschen?",
-    "clear_done": "Verlauf und Notizen gelöscht."
+    "clear_done": "Verlauf und Notizen gelöscht.",
+    "label_whisper": "🌙 Flüstern:",
+    "whisper_off": "Aus",
+    "whisper_on": "Aktiv"
   },
   "it": {
     "mode_en": "🇺🇸 Pratica l'inglese",
@@ -309,7 +324,10 @@
     "metric_vram": "VRAM Utilizzata:",
     "tool_badge": "🔧 Strumento: ",
     "clear_confirm": "Vuoi cancellare la cronologia, le note e il vocabolario?",
-    "clear_done": "Cronologia e note cancellate."
+    "clear_done": "Cronologia e note cancellate.",
+    "label_whisper": "🌙 Sussurro:",
+    "whisper_off": "Disattivato",
+    "whisper_on": "Attivato"
   },
   "ja": {
     "mode_en": "🇺🇸 英語の練習",
@@ -361,7 +379,10 @@
     "metric_vram": "使用VRAM:",
     "tool_badge": "🔧 ツール: ",
     "clear_confirm": "すべての履歴、メモ、単語データを削除しますか？",
-    "clear_done": "履歴とメモを削除しました。"
+    "clear_done": "履歴とメモを削除しました。",
+    "label_whisper": "🌙 ささやき:",
+    "whisper_off": "オフ",
+    "whisper_on": "オン"
   },
   "zh": {
     "mode_en": "🇺🇸 练习英语",
@@ -413,6 +434,9 @@
     "metric_vram": "显存占用 (VRAM):",
     "tool_badge": "🔧 调用工具: ",
     "clear_confirm": "确定要清空本地数据库中的所有历史记录、备忘与词汇吗？",
-    "clear_done": "历史与备忘已成功清空。"
+    "clear_done": "历史与备忘已成功清空。",
+    "label_whisper": "🌙 耳语模式:",
+    "whisper_off": "关闭",
+    "whisper_on": "开启"
   }
 }

@@ -115,6 +115,10 @@
                         <div class="setting-item">
                             <label id="label-voice" for="voice-select">🗣️ Voz IA:</label>
                             <select id="voice-select" class="voice-select">
+                                <optgroup label="✨ Voces Híbridas (Voice Blending)">
+                                    <option value="blend_dora_sarah" data-lang="auto">✨ Dora & Sarah (Bilingüe)</option>
+                                    <option value="blend_alex_adam" data-lang="auto">✨ Alex & Adam (Bilingüe)</option>
+                                </optgroup>
                                 <optgroup label="🇪🇸 Español Nativo">
                                     <option value="ef_dora" data-lang="es">🇪🇸 Dora (Femenina - Cálida)</option>
                                     <option value="em_alex" data-lang="es">🇪🇸 Alex (Masculino - Claro)</option>
@@ -124,6 +128,13 @@
                                     <option value="am_adam" data-lang="en">🇺🇸 Adam (Male - Deep)</option>
                                 </optgroup>
                             </select>
+                        </div>
+                        <div class="setting-item">
+                            <label id="label-whisper" for="whisper-btn" title="Modula la voz con tono suave, menor volumen y cadencia relajante">🌙 Susurro:</label>
+                            <button id="whisper-btn" class="whisper-btn" type="button" aria-pressed="false" title="Alternar Modo Susurro">
+                                <span id="whisper-btn-icon">🌙</span>
+                                <span id="whisper-btn-label">Desactivado</span>
+                            </button>
                         </div>
                         <div class="setting-item">
                             <label id="label-personality" for="personality-select">🎭 Personalidad:</label>

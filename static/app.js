@@ -42,6 +42,8 @@ const micSelect = document.getElementById("mic-select");
 const voiceSelect = document.getElementById("voice-select");
 const vadSelect = document.getElementById("vad-select");
 const personalitySelect = document.getElementById("personality-select");
+const whisperBtn = document.getElementById("whisper-btn");
+const whisperBtnLabel = document.getElementById("whisper-btn-label");
 const micMeterContainer = document.getElementById("mic-meter-container");
 const meterBarFill = document.getElementById("meter-bar-fill");
 const meterThresholdLine = document.getElementById("meter-threshold-line");
@@ -55,6 +57,7 @@ const metricTotal = document.getElementById("metric-total");
 let turnStartTime = 0;
 let firstAudioReceived = false;
 let peakRmsObserved = 0;
+let isWhisperMode = false;
 
 let currentPartialBubble = null;
 let currentPartialTextEl = null;
@@ -65,6 +68,7 @@ Object.defineProperty(window, "isRecording", { get: () => isRecording, set: (v) 
 Object.defineProperty(window, "isCallMode", { get: () => isCallMode, set: (v) => { isCallMode = v; } });
 Object.defineProperty(window, "isUserSpeakingInCall", { get: () => isUserSpeakingInCall, set: (v) => { isUserSpeakingInCall = v; } });
 Object.defineProperty(window, "currentLanguageMode", { get: () => currentLanguageMode, set: (v) => { currentLanguageMode = v; } });
+Object.defineProperty(window, "isWhisperMode", { get: () => isWhisperMode, set: (v) => { isWhisperMode = v; } });
 
 // ==========================================
 // INTERNACIONALIZACIÓN Y MULTIIDIOMA UI (i18n)
@@ -219,6 +223,19 @@ function handleServerMessage(data) {
                 } else if (currentLanguageMode === "en" && data.english_voice) {
                     voiceSelect.value = data.english_voice;
                 }
+            }
+            break;
+
+        case "whisper_mode_changed":
+            isWhisperMode = !!data.enabled;
+            if (whisperBtn) {
+                whisperBtn.classList.toggle("active", isWhisperMode);
+                whisperBtn.setAttribute("aria-pressed", isWhisperMode ? "true" : "false");
+            }
+            if (whisperBtnLabel && window.I18nManager) {
+                whisperBtnLabel.innerText = isWhisperMode ? 
+                    (I18nManager.t("whisper_on") || "Activado") : 
+                    (I18nManager.t("whisper_off") || "Desactivado");
             }
             break;
 
@@ -835,6 +852,28 @@ window.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // Listener botón Modo Susurro (Whisper Mode)
+    if (whisperBtn) {
+        whisperBtn.addEventListener("click", () => {
+            const nextState = !isWhisperMode;
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: "set_whisper_mode",
+                    enabled: nextState
+                }));
+            } else {
+                isWhisperMode = nextState;
+                whisperBtn.classList.toggle("active", isWhisperMode);
+                whisperBtn.setAttribute("aria-pressed", isWhisperMode ? "true" : "false");
+                if (whisperBtnLabel && window.I18nManager) {
+                    whisperBtnLabel.innerText = isWhisperMode ? 
+                        (I18nManager.t("whisper_on") || "Activado") : 
+                        (I18nManager.t("whisper_off") || "Desactivado");
+                }
+            }
+        });
+    }
+
     // Selector de modo de idioma
     document.querySelectorAll(".lang-btn").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -842,12 +881,15 @@ window.addEventListener("DOMContentLoaded", async () => {
             btn.classList.add("active");
             currentLanguageMode = btn.dataset.mode;
 
-            // Auto-seleccionar la mejor voz para el modo
+            // Auto-seleccionar la mejor voz para el modo (preservando mezclas híbridas si el usuario las eligió)
             if (voiceSelect) {
-                if (currentLanguageMode === "es" && !voiceSelect.value.startsWith("e")) {
-                    voiceSelect.value = "ef_dora";
-                } else if (currentLanguageMode === "en" && !voiceSelect.value.startsWith("a")) {
-                    voiceSelect.value = "af_sarah";
+                const isBlend = voiceSelect.value.startsWith("blend");
+                if (!isBlend) {
+                    if (currentLanguageMode === "es" && !voiceSelect.value.startsWith("e")) {
+                        voiceSelect.value = "ef_dora";
+                    } else if (currentLanguageMode === "en" && !voiceSelect.value.startsWith("a")) {
+                        voiceSelect.value = "af_sarah";
+                    }
                 }
             }
 

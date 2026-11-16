@@ -3,7 +3,9 @@ import os
 import re
 import json
 import time
+import urllib.request
 from typing import List, Dict, Optional, Any
+import numpy as np
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "voice_assistant.db")
 
@@ -93,6 +95,17 @@ def init_db():
             )
         """)
 
+        # 7. Tabla de Embeddings Densos para RAG Semántico (Ollama llama3.2:3b 3072D)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS embeddings_cache (
+                key_text TEXT PRIMARY KEY,
+                vector BLOB NOT NULL,
+                doc_type TEXT DEFAULT 'general',
+                ref_id INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         # Inicializar perfil por defecto de Cristian Arboleda si no existe
         default_profile = {
             "name": "Cristian Arboleda",
@@ -106,6 +119,29 @@ def init_db():
             """, (k, v))
 
         conn.commit()
+
+    # Backfill de embeddings para notas existentes
+    try:
+        backfill_note_embeddings()
+    except Exception:
+        pass
+
+def backfill_note_embeddings():
+    """Calcula embeddings para todas las notas que aún no estén indexadas."""
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT n.id, n.title, n.content
+                FROM notes n
+                LEFT JOIN embeddings_cache e ON n.id = e.ref_id
+                WHERE e.ref_id IS NULL
+            """)
+            unindexed = cursor.fetchall()
+            for r in unindexed:
+                index_note_embedding(r["id"], r["title"], r["content"])
+    except Exception:
+        pass
 
 def create_or_get_session(session_id: str, mode: str = "en", voice: str = "af_sarah") -> str:
     with get_connection() as conn:
@@ -191,6 +227,71 @@ def get_vocabulary_list(limit: int = 20) -> List[Dict[str, Any]]:
         rows = cursor.fetchall()
         return [dict(r) for r in rows]
 
+def compute_embedding(text: str) -> Optional[np.ndarray]:
+    """
+    Obtiene o calcula el vector denso (3072D) usando Ollama llama3.2:3b y caché local SQLite.
+    Búsqueda en memoria ultrarrápida (<1ms) si ya está en caché.
+    """
+    clean_t = text.strip()
+    if not clean_t:
+        return None
+
+    # 1. Búsqueda en caché SQLite
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT vector FROM embeddings_cache WHERE key_text = ?", (clean_t,))
+            row = cursor.fetchone()
+            if row and row["vector"]:
+                return np.frombuffer(row["vector"], dtype=np.float32)
+    except Exception:
+        pass
+
+    # 2. Inferencia en Ollama /api/embeddings
+    try:
+        data = json.dumps({"model": "llama3.2:3b", "prompt": clean_t}).encode("utf-8")
+        req = urllib.request.Request(
+            "http://127.0.0.1:11434/api/embeddings",
+            data=data,
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=3.5) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+            vec_list = body.get("embedding")
+            if vec_list:
+                vec = np.array(vec_list, dtype=np.float32)
+                try:
+                    with get_connection() as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            INSERT OR REPLACE INTO embeddings_cache (key_text, vector)
+                            VALUES (?, ?)
+                        """, (clean_t, vec.tobytes()))
+                        conn.commit()
+                except Exception:
+                    pass
+                return vec
+    except Exception:
+        # Fallback silencioso si Ollama no responde
+        return None
+    return None
+
+def index_note_embedding(note_id: int, title: str, content: str):
+    """Indexa semánticamente una nota calculando y asociando su vector denso."""
+    full_text = f"{title}: {content}".strip()
+    vec = compute_embedding(full_text)
+    if vec is not None:
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT OR REPLACE INTO embeddings_cache (key_text, vector, doc_type, ref_id)
+                    VALUES (?, ?, 'note', ?)
+                """, (full_text, vec.tobytes(), note_id))
+                conn.commit()
+        except Exception:
+            pass
+
 def save_voice_note(content: str, title: Optional[str] = None) -> int:
     clean_title = title or f"Nota de voz ({time.strftime('%d/%m %H:%M')})"
     clean_content = content.strip()
@@ -208,7 +309,14 @@ def save_voice_note(content: str, title: Optional[str] = None) -> int:
         except Exception:
             pass
         conn.commit()
-        return note_id
+
+    # Indexar embedding semántico denso
+    try:
+        index_note_embedding(note_id, clean_title, clean_content)
+    except Exception:
+        pass
+
+    return note_id
 
 def get_recent_notes(limit: int = 10) -> List[Dict[str, Any]]:
     with get_connection() as conn:
@@ -234,6 +342,53 @@ def set_user_profile_value(key: str, value: str):
             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
         """, (key, value.strip()))
         conn.commit()
+
+def search_dense_memory(query: str, top_k: int = 3, threshold: float = 0.58) -> List[Dict[str, Any]]:
+    """
+    Búsqueda semántica densa por similitud de coseno en la memoria de notas.
+    Encuentra coincidencias por significado conceptual aunque las palabras exactas no coincidan.
+    """
+    q_vec = compute_embedding(query)
+    if q_vec is None:
+        return []
+
+    q_norm = np.linalg.norm(q_vec)
+    if q_norm == 0:
+        return []
+
+    results = []
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT e.key_text, e.vector, e.ref_id, n.title, n.content
+                FROM embeddings_cache e
+                LEFT JOIN notes n ON e.ref_id = n.id
+                WHERE e.doc_type = 'note'
+            """)
+            rows = cursor.fetchall()
+            for r in rows:
+                if not r["vector"]:
+                    continue
+                doc_vec = np.frombuffer(r["vector"], dtype=np.float32)
+                d_norm = np.linalg.norm(doc_vec)
+                if d_norm == 0:
+                    continue
+                score = float(np.dot(q_vec, doc_vec) / (q_norm * d_norm))
+                if score >= threshold:
+                    title = r["title"] or "Nota"
+                    content = r["content"] or r["key_text"]
+                    results.append({
+                        "id": r["ref_id"],
+                        "title": title,
+                        "content": content,
+                        "score": round(score, 3)
+                    })
+    except Exception:
+        return []
+
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results[:top_k]
 
 def search_fts_memory(query: str, limit: int = 3) -> Dict[str, List[Dict[str, Any]]]:
     """Busca en tablas virtuales FTS5 notas y mensajes coincidentes por palabras clave."""
@@ -273,10 +428,13 @@ def search_fts_memory(query: str, limit: int = 3) -> Dict[str, List[Dict[str, An
 
 def get_smart_memory_context(query: Optional[str] = None) -> str:
     """
-    RAG Híbrido Contextual Avanzado:
+    RAG Híbrido Contextual Avanzado (Dense Semantic Vector + FTS5 Keyword Match):
     1. Inyecta perfil de usuario (Cristian Arboleda, nivel de inglés, intereses).
-    2. Si el query consulta sobre temas pasados, realiza búsqueda indexada en FTS5.
-    3. Si es una conversación general, añade las notas más recientes y vocabulario.
+    2. Búsqueda Híbrida:
+       - Similitud de Coseno en vectores densos (Ollama llama3.2:3b 3072D).
+       - Búsqueda léxica indexada en FTS5.
+       - Fusión y deduplicación inteligente.
+    3. Si es una conversación general sin consulta específica, inyecta notas recientes y vocabulario.
     """
     profile = get_user_profile()
     parts = []
@@ -288,21 +446,40 @@ def get_smart_memory_context(query: Optional[str] = None) -> str:
         interests = profile.get("interests", "")
         parts.append(f"PERFIL DEL USUARIO: Hablas con {name}. Nivel inglés: {level}. Intereses: {interests}.")
 
-    # 2. Búsqueda contextual FTS5 si hay query orientada a recuerdos/notas
+    # 2. Búsqueda contextual Híbrida (Dense Vector + FTS5)
     has_inquiry = False
     if query:
         inquiry_triggers = [
             "te acuerdas", "recuerdas", "notas", "hablamos", "dije", "dijiste",
-            "remember", "notes", "talked", "mentioned", "comprar", "reunión", "clave"
+            "remember", "notes", "talked", "mentioned", "comprar", "reunión", "clave",
+            "qué tenía", "que tenia", "que anote", "qué anoté", "busca", "search"
         ]
         q_lower = query.lower()
         if any(t in q_lower for t in inquiry_triggers):
             has_inquiry = True
+
+            # Vector Dense Search (Cosine similarity)
+            dense_notes = search_dense_memory(query, top_k=3, threshold=0.58)
+            # FTS5 Keyword Search
             fts_results = search_fts_memory(query, limit=3)
-            if fts_results["notes"]:
-                notes_text = "; ".join([f"'{n['title']}: {n['content']}'" for n in fts_results["notes"]])
-                parts.append(f"NOTAS RELEVANTES ENCONTRADAS POR BÚSQUEDA: [{notes_text}]")
-            if fts_results["messages"]:
+
+            # Fusión híbrida de notas (Deduplicación por contenido)
+            seen_contents = set()
+            hybrid_notes = []
+            for d in dense_notes:
+                key = d["content"].lower().strip()
+                seen_contents.add(key)
+                hybrid_notes.append(f"'{d['title']}: {d['content']}' (semántica {int(d['score']*100)}%)")
+
+            for n in fts_results.get("notes", []):
+                key = n["content"].lower().strip()
+                if key not in seen_contents:
+                    seen_contents.add(key)
+                    hybrid_notes.append(f"'{n['title']}: {n['content']}'")
+
+            if hybrid_notes:
+                parts.append(f"NOTAS RELEVANTES ENCONTRADAS (RAG HÍBRIDO): [{'; '.join(hybrid_notes)}]")
+            if fts_results.get("messages"):
                 msgs_text = "; ".join([f"{m['role']}: '{m['content']}'" for m in fts_results["messages"]])
                 parts.append(f"CONVERSACIONES PREVIAS RELEVANTES: [{msgs_text}]")
 
@@ -336,6 +513,7 @@ def clear_all_history():
         try:
             cursor.execute("DELETE FROM notes_fts")
             cursor.execute("DELETE FROM messages_fts")
+            cursor.execute("DELETE FROM embeddings_cache")
         except Exception:
             pass
         conn.commit()

@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 # Importación de arquitectura modular 'core'
+PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 import database
 import tools
 from core import (
@@ -23,6 +24,7 @@ from core import (
     DEFAULT_PERSONALITY,
     get_system_prompt,
     MODEL_NAME,
+    OLLAMA_URL,
     DEFAULT_SPANISH_VOICE,
     DEFAULT_ENGLISH_VOICE,
     is_text_spanish,
@@ -30,6 +32,7 @@ from core import (
     load_stt_model,
     transcribe_audio_bytes,
     load_tts_model,
+    VOICE_BLENDS,
     synthesize_audio_wav_base64,
     fetch_ollama_chat_stream,
     fast_analyze_turn
@@ -141,6 +144,7 @@ async def websocket_chat_endpoint(websocket: WebSocket):
     current_personality = DEFAULT_PERSONALITY
     current_spanish_voice = DEFAULT_SPANISH_VOICE
     current_english_voice = DEFAULT_ENGLISH_VOICE
+    is_whisper_mode = False
     session_id = f"sess-{int(time.time())}"
     database.create_or_get_session(session_id, current_mode, current_english_voice)
     conversation_history: List[Dict[str, str]] = [
@@ -185,11 +189,21 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                     await websocket.send_json({"type": "personality_changed", "personality": current_personality})
                 continue
 
-            # 2. Configuración dinámica de voces
+            # Configuración dinámica de Modo Susurro (Whisper Mode)
+            if msg_type == "set_whisper_mode":
+                is_whisper_mode = bool(data.get("enabled", False))
+                print(f"Modo Susurro: {'ACTIVADO' if is_whisper_mode else 'DESACTIVADO'}")
+                await websocket.send_json({"type": "whisper_mode_changed", "enabled": is_whisper_mode})
+                continue
+
+            # 2. Configuración dinámica de voces (soporte de voces nativas y Voice Blending híbrido)
             if msg_type == "set_voice":
                 new_voice = data.get("voice", "")
                 if new_voice:
-                    if new_voice.startswith("e"):
+                    if new_voice in VOICE_BLENDS or "blend" in new_voice:
+                        current_spanish_voice = new_voice
+                        current_english_voice = new_voice
+                    elif new_voice.startswith("e"):
                         current_spanish_voice = new_voice
                     else:
                         current_english_voice = new_voice
@@ -287,6 +301,17 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                 stt_ms=stt_latency
             )
 
+            # Detección automática de intención de Modo Susurro
+            whisper_on_triggers = ["susurra", "modo susurro", "habla suave", "habla bajito", "whisper", "night mode", "modo noche", "tono suave"]
+            whisper_off_triggers = ["voz normal", "desactiva susurro", "normal voice", "disable whisper", "habla fuerte", "apaga susurro"]
+            user_lower = user_text.lower()
+            if any(wt in user_lower for wt in whisper_on_triggers) and not is_whisper_mode:
+                is_whisper_mode = True
+                await websocket.send_json({"type": "whisper_mode_changed", "enabled": True})
+            elif any(wt in user_lower for wt in whisper_off_triggers) and is_whisper_mode:
+                is_whisper_mode = False
+                await websocket.send_json({"type": "whisper_mode_changed", "enabled": False})
+
             current_generation_id += 1
             gen_id = current_generation_id
             is_interrupted = False
@@ -316,7 +341,7 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                 # Síntesis TTS directa ultra-rápida (TTFA ~200ms sin esperar al LLM)
                 tool_voice = current_spanish_voice if tool_lang == "es" else current_english_voice
                 audio_b64 = await loop.run_in_executor(
-                    thread_pool, synthesize_audio_wav_base64, tts_model, spoken_text, tool_voice, tool_lang
+                    thread_pool, synthesize_audio_wav_base64, tts_model, spoken_text, tool_voice, tool_lang, is_whisper_mode
                 )
 
                 if audio_b64 and not is_interrupted and gen_id == current_generation_id:
@@ -353,7 +378,8 @@ async def websocket_chat_endpoint(websocket: WebSocket):
 
             # Inyectar memoria persistente ultraligera (RAG híbrido de notas, perfil y FTS5)
             memory_block = database.get_smart_memory_context(user_text)
-            current_system_prompt = get_system_prompt(current_mode, current_personality) + (f"\n{memory_block}" if memory_block else "")
+            whisper_prompt = "\n[INSTRUCCIÓN MODO SUSURRO: Responde con tono íntimo, muy suave, relajante y oraciones concisas y tranquilas.]" if is_whisper_mode else ""
+            current_system_prompt = get_system_prompt(current_mode, current_personality) + whisper_prompt + (f"\n{memory_block}" if memory_block else "")
 
             messages_for_llm = [{"role": "system", "content": current_system_prompt}] + [
                 m for m in conversation_history if m.get("role") != "system"
@@ -377,7 +403,7 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                         break
 
                     audio_b64 = await loop.run_in_executor(
-                        thread_pool, synthesize_audio_wav_base64, tts_model, sentence_text, voice, lang
+                        thread_pool, synthesize_audio_wav_base64, tts_model, sentence_text, voice, lang, is_whisper_mode
                     )
 
                     if audio_b64 and gen_id == current_generation_id and not is_interrupted:

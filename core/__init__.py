@@ -39,6 +39,12 @@ def clean_tts_text(text: str) -> str:
     from core.tts import clean_tts_text as _clean
     return _clean(text)
 
+def get_voice_target(*args, **kwargs):
+    from core.tts import get_voice_target as _target
+    return _target(*args, **kwargs)
+
+from core.tts import VOICE_BLENDS
+
 def synthesize_audio_wav_base64(*args, **kwargs):
     from core.tts import synthesize_audio_wav_base64 as _synth
     return _synth(*args, **kwargs)
@@ -58,6 +64,8 @@ __all__ = [
     "transcribe_audio_bytes",
     "load_tts_model",
     "clean_tts_text",
+    "VOICE_BLENDS",
+    "get_voice_target",
     "synthesize_audio_wav_base64",
     "fetch_ollama_chat_stream",
     "fast_analyze_turn",
