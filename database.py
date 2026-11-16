@@ -255,8 +255,9 @@ def compute_embedding(text: str) -> Optional[np.ndarray]:
             "prompt": clean_t,
             "keep_alive": -1
         }).encode("utf-8")
+        ollama_url = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
         req = urllib.request.Request(
-            "http://127.0.0.1:11434/api/embeddings",
+            f"{ollama_url}/api/embeddings",
             data=data,
             headers={"Content-Type": "application/json"}
         )

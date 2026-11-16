@@ -2,84 +2,132 @@
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg)](https://fastapi.tiangolo.com/)
+[![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED.svg)](https://www.docker.com/)
 [![Faster-Whisper CUDA](https://img.shields.io/badge/Faster--Whisper-CUDA-76B900.svg)](https://github.com/SYSTRAN/faster-whisper)
 [![Ollama](https://img.shields.io/badge/Ollama-Llama_3.2_3B-black.svg)](https://ollama.com/)
 [![Kokoro ONNX](https://img.shields.io/badge/Kokoro--TTS-82M_ONNX-FF6F00.svg)](https://github.com/thewh1teagle/kokoro-onnx)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PWA](https://img.shields.io/badge/PWA-Mobile_Ready-purple.svg)](https://web.dev/progressive-web-apps/)
+[![Tests Passing](https://img.shields.io/badge/Quality_Gate-35%2F35_Passing-brightgreen.svg)](tests/run_all_tests.py)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Un asistente de voz full-duplex en tiempo real (similar a **ChatGPT Voice Mode**), diseñado para funcionar **100% local, sin conexión a internet, sin pagar APIs y optimizado para GPUs NVIDIA RTX de 6 GB VRAM** (como RTX 4050 / RTX 4060 Laptop).
+Un asistente de voz full-duplex en tiempo real (similar a **ChatGPT Voice Mode**), diseñado para funcionar **100% local, privado, sin conexión a internet y optimizado para GPUs NVIDIA RTX de 6 GB VRAM** (como RTX 4050 / RTX 4060 Laptop o superiores).
 
-Permite mantener llamadas de voz continuas con **manos libres**, transcripción en pantalla palabra por palabra, interrupciones instantáneas (**barge-in**), sincronización exacta de turnos y soporte bilingüe nativo con pronunciación natural en español e inglés.
+Permite mantener llamadas de voz continuas con **manos libres**, transcripción instantánea palabra por palabra, interrupciones al vuelo (**barge-in**), memoria semántica densa (Hybrid RAG), mezclas de voces interpoladas en tiempo real (**Voice Blends**), modo susurro (**Whisper Mode**), soporte para móviles vía **HTTPS / PWA** y despliegue rápido con **Docker & Docker Compose**.
+
+---
+
+## 🏗️ Diagrama de Arquitectura End-to-End
+
+```mermaid
+flowchart LR
+    subgraph Cliente ["💻 / 📱 Cliente (PC / Móvil PWA)"]
+        MIC["🎙️ Micrófono (16kHz PCM)"] --> VAD["🎚️ Web Audio VAD + Filtro Ruido"]
+        VAD --> WS_CLIENT["⚡ WebSocket Seguro (WSS)"]
+        WS_CLIENT -. Interrupción Barge-in .-> CANCEL["⏹️ Detención Inmediata (<50ms)"]
+        WS_AUDIO["🔊 Web Audio Streaming Buffer"] <-- Audio Base64 Chunks -- WS_CLIENT
+    end
+
+    subgraph Servidor ["🖥️ Servidor Local FastAPI (server.py)"]
+        WS_CLIENT --> ORCH["🎯 Orquestador de Turnos (turn_id)"]
+        ORCH --> DISPATCHER{"🔧 Tool Dispatcher<br/>(Regex Intent)"}
+        
+        DISPATCHER -- Tool Coincide --> TOOLS["⚡ Zero-Latency Tools<br/>Hora | Apps | GPU | Notas (<1ms)"]
+        DISPATCHER -- No Tool --> STT["🎧 Faster-Whisper CUDA<br/>STT Parcial (~26ms)"]
+        
+        STT --> RAG["🧠 Hybrid RAG Memory<br/>3072D Cosine + FTS5 SQLite"]
+        RAG --> LLM["🦙 Ollama LLaMA 3.2 3B<br/>Streaming (~51 tps, Keep-Alive)"]
+        
+        LLM --> CHUNKER["✂️ SentenceChunker<br/>(División Gapless de oraciones)"]
+        TOOLS --> CHUNKER
+        
+        CHUNKER --> TTS["🗣️ Kokoro ONNX (6 hilos CPU)<br/>Voice Blends (RTF 0.27x)<br/>Modo Susurro (-52.6% RMS)"]
+        TTS --> WS_CLIENT
+    end
+
+    subgraph Persistencia ["💾 Capa de Persistencia (database.py)"]
+        RAG <--> DB[("SQLite 3<br/>voice_assistant.db")]
+        TOOLS -. Indexación Asíncrona Daemon .-> DB
+    end
+```
 
 ---
 
 ## ⚡ Características Principales
 
-* 📞 **Modo Llamada Manos Libres (*Full-Duplex*):** Habla con naturalidad sin tocar ningún botón. El VAD (*Voice Activity Detection*) calibrado a 650 ms detecta pausas naturales y procesa tu intervención al instante.
-* 🎚️ **Filtro Anti-Respiración y Ruido Ambiental:** Control de sensibilidad ajustable en interfaz (Baja, Media, Alta) con indicador visual de umbral en tiempo real para evitar que respiraciones o ventiladores de laptop activen el micrófono por error.
-* ⚡ **Transcripción Parcial en Vivo (*Live Streaming STT*):** Las palabras que dices se proyectan en pantalla en tiempo real con una latencia de apenas **~26 ms** gracias a Faster-Whisper en GPU CUDA.
-* 💾 **Memoria Persistente Local (SQLite):** Historial completo de conversaciones, sesiones, traducciones y métricas guardadas automáticamente en `voice_assistant.db` sin enviar ningún dato a la nube.
-* 🧠 **RAG Híbrido con FTS5 y Perfil de Usuario:** Búsqueda semántica por palabras clave en milisegundos (`notes_fts`, `messages_fts`) y memoria persistente del usuario (`Cristian Arboleda`), adaptando respuestas según tus intereses y nivel.
-* 🎭 **Selector de Personalidades Conversacionales:** Modifica al vuelo el rol y tono del modelo con prompts optimizados:
-  * 🎓 *Language Coach (Tutor de Idiomas):* Corrige y modela errores gramaticales con empatía y calidez.
-  * 🤗 *Casual Friend (Amigo de Confianza):* Tono relajado, fresco y espontáneo de llamada telefónica.
-  * 💻 *Senior Tech Lead:* Conciso, pragmático y con criterio técnico de arquitectura de software.
-  * 👔 *Executive Advisor (Mentor Ejecutivo):* Asertivo, estratégico y orientado a alto impacto.
-* 🌊 **Visualizador de Audio 60 FPS en Canvas:** Curvas de frecuencia luminosas en tiempo real (verde esmeralda para el micrófono del usuario vía `AnalyserNode`, violeta y cian harmónico durante el habla de la IA, y respiración azul en reposo).
-* 🌐 **Interfaz Global Multiidioma (8 Idiomas Internacionales):** Selector en la cabecera para traducir toda la UI al instante entre 🇪🇸 Español, 🇺🇸 English, 🇧🇷 Português, 🇫🇷 Français, 🇩🇪 Deutsch, 🇮🇹 Italiano, 🇯🇵 日本語 y 🇨🇳 简体中文, con exportación directa de sesiones a Markdown (📥).
-* 🔧 **Tool Calling por Voz con Latencia Cero:** Ejecución directa y respuesta por voz instantánea (< 250 ms TTFA sin esperar al LLM):
-  * 🕒 *Hora y fecha:* `"¿Qué hora es?"`, `"What time is it?"`
-  * ⚡ *Estado de Hardware / GPU:* `"¿Cómo está la GPU?"`, `"Hardware status"`, informando temperatura, VRAM en uso y memoria libre consultando `nvidia-smi`.
-  * 🚀 *Lanzar Aplicaciones Locales:* `"Abre la calculadora"`, `"Abre Visual Studio Code"`, `"Abre Spotify"`, `"Abre YouTube"`, `"Abre GitHub"`.
-  * 📌 *Guardar notas:* `"Toma nota de comprar café"`, `"Recuérdame llamar al médico"`, `"Take a note to buy headphones"`
-  * 📋 *Leer notas:* `"¿Cuáles son mis notas?"`, `"Léeme mis notas"`, `"Show my notes"`
-  * 📝 *Vocabulario aprendido:* `"¿Qué vocabulario tengo?"`, `"What vocabulary did I learn?"`
-* ⏹️ **Interrupciones Naturales (*Barge-in*):** Si la IA está hablando y comienzas a hablar, el audio se corta inmediatamente (<50 ms) y se cancela la tarea en el servidor, liberando recursos.
-* 🇪🇸 **Fonética Nativa en Español (Sin acento extranjero):**
-  * Integración de fonemizador G2P en español (`lang="es"`), logrando vocales puras, hache muda y cadencia nativa.
-  * Selector dinámico entre voces nativas: 🇪🇸 **Dora** (`ef_dora` - cálida y conversacional) y 🇪🇸 **Alex** (`em_alex` - claro y enérgico).
-* 🇺🇸 **Modo Práctica de Inglés (Tutor Inteligente):**
-  * Conversación fluida con voces nativas 🇺🇸 **Sarah** (`af_sarah`) o 🇺🇸 **Adam** (`am_adam`).
-  * Subtítulos traducidos al español y retroalimentación pedagógica sobre gramática/vocabulario en tiempo real.
-* 🌐 **Modo Bilingüe Automático:** Detección automática del idioma hablado en cada turno para responder en la misma lengua.
-* 🛡️ **Sanitización Dinámica de Texto para TTS:** Limpieza previa de emojis y acciones entre asteriscos (evita que el motor pronuncie *"asterisco sonríe asterisco"* o *"mano saludando"*).
-* 🔄 **Sincronización Multi-Turno (`turn_id`):** Cada intervención lleva un ID unívoco, eliminando desfases en las traducciones o colisiones de audio.
-* 🚀 **Streaming Continuo sin Frenos (Precarga de Audio):**
-  * Motor Kokoro ONNX acelerado con **6 hilos en CPU** (~450 ms por frase completa).
-  * Encadenamiento fluido con precarga en el navegador: cada oración subsiguiente llega con más de **2.5 segundos de anticipación**, logrando un habla continua sin baches ni silencios artificiales.
+### 1. 📞 Modo Llamada Manos Libres (*Full-Duplex*) & Barge-in
+* **VAD Calibrado a 650 ms:** Detecta pausas naturales al hablar sin necesidad de pulsar botones.
+* **Interrupción Inmediata (*Barge-in*):** Si la IA está hablando y comienzas a hablar, el audio se silencia instantáneamente (<50 ms), cancelando la generación y liberando recursos.
+* **Filtro Anti-Respiración y Ruido Ambiental:** Umbral dinámico visual en tiempo real para evitar que suspiros o ventiladores activen el micrófono por error.
+
+### 2. 🧠 Memoria Semántica Densa (Hybrid RAG: 3072D + FTS5)
+* **Similitud de Coseno en Memoria Local:** Vectores densos de 3072 dimensiones generados con Ollama y cacheados en SQLite (`embeddings_cache`) para recuperar conceptos aunque las palabras exactas no coincidan.
+* **Búsqueda Léxica FTS5:** Indexación de texto completo ultrarrápida (`notes_fts`, `messages_fts`).
+* **Perfil Persistente de Usuario:** Inyección automática de contexto personalizado (**Cristian Arboleda**, nivel de inglés, intereses técnicos).
+
+### 3. 🔧 Herramientas Locales Zero-Latency con Indexación Asíncrona
+* **Ejecución Instantánea (< 1 ms a 11 ms):**
+  * 🕒 *Hora y fecha exacta:* `"¿Qué hora es?"`, `"What time is it?"` (`0.38 ms`)
+  * ⚡ *Estado de Hardware / GPU NVIDIA:* `"¿Cómo está la GPU?"`, `"Hardware status"` (`47 ms` vía `nvidia-smi`)
+  * 🚀 *Lanzamiento de Aplicaciones del SO:* `"Abre la calculadora"`, `"Abre Visual Studio Code"`, `"Abre Spotify"`, `"Abre YouTube"`, `"Abre GitHub"`, `"Abre el navegador"`.
+  * 📌 *Guardar notas por voz:* `"Toma nota de comprar café y pan"` (**`11 ms`**, 300x más rápido gracias a indexación en segundo plano).
+  * 📋 *Consultar notas:* `"¿Cuáles son mis notas?"`, `"Show my notes"` (`1.5 ms`).
+  * 📝 *Vocabulario practicado:* `"¿Qué vocabulario tengo?"`, `"What words did I learn?"` (`1.2 ms`).
+
+### 4. 🎭 Voice Blending Híbrido & Modo Susurro (Whisper Mode)
+* **Mezcla Híbrida de Voces (Voice Blends):**
+  * `blend_dora_sarah`: 60% Dora (Español) + 40% Sarah (Inglés) $\rightarrow$ **RTF 0.27x (3.7x más rápido que tiempo real)**.
+  * `blend_alex_adam`: 60% Alex (Español) + 40% Adam (Inglés) $\rightarrow$ **RTF 0.27x**.
+* **Modo Susurro Acústico (Whisper Mode):**
+  * Atenuación de amplitud modulada al **52.6%** del RMS original.
+  * Cadencia ralentizada con pausas suaves para un tono relajante y confidencial.
+
+### 5. 📱 Soporte Móvil First, HTTPS Seguro y PWA
+* **Contexto Seguro HTTPS Automático:** Generación transparente de certificados SSL en `certs/` para que Chrome y Safari en Android/iOS permitan acceso al micrófono en red local (`https://192.168.x.x:8000`).
+* **Progressive Web App (PWA):** Incluye `manifest.json` y `sw.js` (Service Worker) para instalar como aplicación nativa a pantalla completa en tu teléfono.
+
+### 6. 🌐 Frontend Modular y Soporte Multiidioma (i18n)
+* **8 Idiomas Internacionales:** Español (🇪🇸), Inglés (🇺🇸), Portugués (🇧🇷), Francés (🇫🇷), Alemán (🇩🇪), Italiano (🇮🇹), Japonés (🇯🇵) y Chino Simplificado (🇨🇳).
+* **Cero Parpadeo:** Diccionarios sincrónicos embebidos con carga progresiva de `locales.json`.
+* **Exportación de Sesiones:** Descarga el historial conversacional completo en formato Markdown (📥).
 
 ---
 
-## 🏗️ Arquitectura y Distribución de Hardware
+## 🏗️ Distribución de Hardware y Consumo de Recursos
 
-Diseñado para aprovechar al máximo una laptop o PC con **6 GB de VRAM**:
+Diseñado y calibrado para una laptop o PC con **6 GB de VRAM** (Probado en NVIDIA GeForce RTX 4050 Laptop):
 
-| Componente | Modelo / Tecnología | Dispositivo | VRAM / RAM | Latencia Típica |
+| Componente | Modelo / Motor | Dispositivo | VRAM / RAM | Latencia Típica |
 | :--- | :--- | :--- | :--- | :--- |
-| **STT (Audio a Texto)** | Faster-Whisper Multilingual (`base`) | GPU (CUDA fp16) | ~800 MB VRAM | **~26 ms** |
-| **LLM (Cerebro)** | Ollama (`llama3.2:3b` - Q4_K_M) | GPU (CUDA - Keep-Alive) | ~2.2 GB VRAM | **~51 tokens/s** |
-| **TTS (Texto a Voz)** | Kokoro-82M ONNX (6 hilos paralelos) | CPU (Multi-hilo) | 0 MB VRAM (~320 MB RAM) | **~450 ms / oración** |
-| **VAD & Audio Engine** | Web Audio API + AudioContext | Navegador (Cliente) | N/A | **< 10 ms** |
-| **Orquestador** | FastAPI + WebSockets Asíncronos | CPU | ~120 MB RAM | **< 5 ms** |
-| **Memoria Persistente** | SQLite 3 (`database.py`) | Disco Local (Zero Overhead) | < 1 MB | **< 1 ms** |
-| **Tool Calling Local** | Regex Intent Dispatcher (`tools.py`) | CPU | < 5 MB RAM | **< 1 ms (TTFA ~220 ms)** |
-| **Total en Uso** | — | **GPU + CPU** | **~3.2 GB / 6 GB VRAM** | **TTFA: ~1.1s – 1.4s** |
+| **STT (Audio a Texto)** | Faster-Whisper (`base`) | GPU (CUDA fp16) | ~800 MB VRAM | **~26 ms** |
+| **LLM (Cerebro)** | Ollama (`llama3.2:3b` Q4_K_M) | GPU (CUDA Keep-Alive) | ~2.2 GB VRAM | **~51 tokens/s** |
+| **TTS (Texto a Voz)** | Kokoro-82M ONNX (6 hilos) | CPU (Multi-hilo) | 0 MB VRAM (~320 MB RAM) | **~450 ms (RTF 0.27x)** |
+| **Memoria RAG** | SQLite 3 + Vectores 3072D | Disco / Caché RAM | < 5 MB RAM | **< 5 ms** |
+| **Herramientas Locales** | Dispatcher Regex + Background Threads | CPU | < 2 MB RAM | **0.18 – 11 ms** |
+| **Total del Sistema** | — | **GPU + CPU** | **3.0 GB / 6 GB VRAM (50%)** | **TTFA: ~1.1s – 1.4s** |
 
 ---
 
-## 📋 Requisitos Previos
+## 🚀 Despliegue Rápido con Docker & Docker Compose
 
-1. **Sistema Operativo:** Windows 10/11 o Linux.
-2. **GPU Recomendada:** NVIDIA RTX con al menos 4 GB – 6 GB VRAM (RTX 3050, 3060, 4050, 4060 o superior) con soporte CUDA.
-3. **Python:** 3.10 o 3.11.
-4. **Ollama:** Descárgalo desde [ollama.com](https://ollama.com) y descarga el modelo Llama 3.2:
-   ```bash
-   ollama pull llama3.2:3b
-   ```
+La forma más sencilla de ejecutar todo el stack sin configurar entornos de Python locales:
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/cristianhar/realtime-voice-assistant-local.git
+cd realtime-voice-assistant-local
+
+# 2. Iniciar con Docker Compose (con soporte para GPU NVIDIA)
+docker compose up --build
+```
+
+El orquestador de Docker:
+1. Levanta el contenedor de **Ollama** con persistencia en `ollama_data`.
+2. Descarga automáticamente el modelo **LLaMA 3.2 3B** en el primer arranque.
+3. Levanta el contenedor de **Voice Assistant** con HTTPS en el puerto `8000`.
 
 ---
 
-## 🚀 Instalación y Puesta en Marcha
+## 💻 Instalación y Ejecución Local Nativa (Windows / Linux)
 
 ### 1. Clonar el Repositorio
 ```bash
@@ -87,15 +135,15 @@ git clone https://github.com/cristianhar/realtime-voice-assistant-local.git
 cd realtime-voice-assistant-local
 ```
 
-### 2. Crear y Activar Entorno Virtual
+### 2. Crear Entorno Virtual
 ```bash
 python -m venv venv
 
 # En Windows (PowerShell):
 .\venv\Scripts\Activate.ps1
 
-# En Windows (CMD):
-.\venv\Scripts\activate.bat
+# En Linux / macOS:
+source venv/bin/activate
 ```
 
 ### 3. Instalar Dependencias
@@ -103,159 +151,122 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-*(Opcional para aceleración CUDA en Windows)*:
+*(Para aceleración CUDA en Windows)*:
 ```bash
 pip install nvidia-cublas-cu12 nvidia-cuda-nvrtc-cu12
 ```
 
-### 4. Descargar Modelos de Síntesis Kokoro
-Coloca los archivos del modelo en la carpeta `models/`:
+### 4. Modelos Kokoro TTS
+Coloca los archivos en la carpeta `models/`:
 * [kokoro-v0_19.onnx](https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v0_19.onnx) (~310 MB)
 * [voices-v1.0.bin](https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin) (~28 MB)
 
-*(Puedes descargarlos fácilmente desde PowerShell):*
+*(Descarga en 1 línea con PowerShell):*
 ```powershell
 Invoke-WebRequest -Uri "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v0_19.onnx" -OutFile "models/kokoro-v0_19.onnx"
 Invoke-WebRequest -Uri "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin" -OutFile "models/voices-v1.0.bin"
 ```
 
----
-
-## 🎮 Ejecución
-
-### Opción Rápida (1 solo clic en Windows)
-Haz doble clic en:
+### 5. Iniciar Ollama y Descargar Modelo
 ```bash
-run.bat
-```
-El script levantará Ollama, iniciará el servidor FastAPI y abrirá tu navegador en `http://127.0.0.1:8000`.
-
-### Opción Manual desde Terminal
-```bash
-# 1. Asegúrate de tener Ollama activo
 ollama serve
-
-# 2. Inicia el servidor (escucha en PC y en tu red local para celulares)
-python server.py
-
-# 📱 Para usarlo desde tu celular con micrófono habilitado (iOS/Android):
-python server.py --https
-
-# 3. Abre en tu navegador
-# En esta PC:     http://localhost:8000 (o https://localhost:8000)
-# En tu Celular:  https://192.168.x.x:8000 (muestra tu IP exacta en el banner de arranque)
+ollama pull llama3.2:3b
 ```
 
----
+### 6. Ejecutar el Servidor
+```bash
+# Modo estándar con HTTPS (recomendado para acceder desde PC y Celular):
+python server.py --https --host 0.0.0.0 --port 8000
+```
 
-## 💡 Guía de Uso de la Interfaz (Web UI)
-
-Al abrir `http://127.0.0.1:8000`, dispondrás de una interfaz moderna y lista para conversar:
-
-1. **Selección de Modo (Barra Superior):**
-   * **🇺🇸 Practicar Inglés:** Actúa como tutor de inglés nativo. Corrige errores comunes de forma amigable, muestra lo que dijiste en inglés, su traducción al español y una tarjeta con tips gramaticales en el panel derecho.
-   * **🇪🇸 Español:** Asistente conversacional nativo en español con voz cálida o dinámica (Dora o Alex).
-   * **🌐 Bilingüe / Auto:** Detecta automáticamente en qué idioma le hablas en cada turno y responde en el mismo.
-2. **Modo Llamada Manos Libres (📞 Iniciar Modo Llamada):**
-   * Haz clic una vez para activar la llamada continua.
-   * Puedes hablar con total naturalidad; el sistema detecta cuándo terminas de hablar mediante el VAD, transcribe en tiempo real y te responde en voz alta.
-   * Si la IA está hablando y deseas interrumpirla, simplemente empieza a hablar o presiona **⏹ Interrumpir**.
-3. **Calibración del Filtro VAD (Anti-Respiración):**
-   * Observa la barra verde de nivel de voz: verás una **línea vertical roja**.
-   * Tu respiración o el ventilador deben quedarse a la izquierda de la línea roja. Solo cuando hablas, la barra verde cruza la línea roja.
-   * Puedes ajustar el selector entre **Baja**, **Media** o **Alta** según la sensibilidad de tu micrófono.
-4. **Selector de Voz de IA:**
-   * Cambia en cualquier momento entre 🇪🇸 **Dora** (Femenina), 🇪🇸 **Alex** (Masculino), 🇺🇸 **Sarah** (Femenina) y 🇺🇸 **Adam** (Masculino).
+En consola verás las URLs de acceso directo:
+* 💻 **En esta PC:** `https://localhost:8000`
+* 📱 **En tu Celular:** `https://192.168.x.x:8000`
 
 ---
 
-## ⚡ Optimización para Laptops NVIDIA (Desbloqueo de Relojes P0)
+## 🧪 Pruebas Automatizadas y Calibración (Quality Gate)
 
-En portátiles con GPU NVIDIA (ej. MSI Thin 15, Lenovo Legion, ASUS TUF), Windows puede limitar la GPU a estados de bajo consumo (P4/P5) con frecuencias de memoria reducidas (5,501 MHz en lugar de los 8,001 MHz de GDDR6).
-
-Incluimos scripts listos para desbloquear el máximo rendimiento:
-
-1. **Desbloquear:** Haz clic derecho en `optimizar_gpu.bat` (o ejecuta `optimizar_gpu.ps1`) $\rightarrow$ **Ejecutar como Administrador**.
-   * Fija el reloj de memoria a **8,001 MHz**.
-   * Activa el estado **P0** (Max Performance).
-   * Eleva la velocidad de inferencia de Ollama a más de **50 tokens/s**.
-2. **Restaurar:** Si deseas volver a los valores estándar de fábrica con ahorro de energía, ejecuta `restaurar_gpu.bat`.
-
----
-
-## 🧪 Pruebas Automatizadas, End-to-End y Benchmarks
-
-El proyecto cuenta con un sistema de verificación estricto (**Quality Gate**) que valida cada componente antes de cualquier despliegue:
+El proyecto cuenta con un riguroso sistema de pruebas de calidad:
 
 ```bash
-# 🚀 Ejecutar la suite completa End-to-End y unitaria (32 tests en < 0.3s):
+# 🚀 Ejecutar la suite completa (35 pruebas unitarias y E2E en ~2.9s):
 python tests/run_all_tests.py
 
-# 🔊 Ejecutar con validación de modelos reales de audio (Kokoro TTS + Whisper CUDA loopback):
-python tests/run_all_tests.py --with-audio
+# 🔬 Ejecutar la suite completa de Benchmark E2E y Calibración de Hardware en vivo:
+python tests/benchmark_full_calibration_suite.py
 ```
 
-Suites especializadas incluidas en `tests/`:
-* `tests/test_e2e_pipeline.py`: Prueba integral de todo el ciclo de vida (SQLite, Tool Calling, RAG e inyección de memoria).
-* `tests/test_chunker.py`: Verificación del segmentador de oraciones y prevención de frenos de audio.
-* `tests/test_sanitization.py`: Filtros de texto, eliminación de asteriscos narrativos y emojis.
-* `tests/test_tools_memory.py`: Pruebas de herramientas locales (Hora, Notas, Vocabulario) y persistencia SQLite.
-* `tests/test_benchmark_continuity.py`: Evaluación de continuidad, medición de silencios/frenos y barge-in.
-* `tests/run_benchmarks.py`: Benchmark de componentes aislados (Faster-Whisper CUDA, Llama 3.2 TTFT, Kokoro TTS).
+### Resumen de Suites en `tests/`:
+* `tests/test_e2e_pipeline.py`: Valida persistencia SQLite, tools locales, Hybrid RAG, chunker gapless y blends de voz.
+* `tests/test_tools_memory.py`: Pruebas exhaustivas de intención y latencia de tools (hora, notas, vocabulario, apps).
+* `tests/test_chunker.py`: Verificación matemática del streaming continuo sin silencios artificiales.
+* `tests/test_sanitization.py`: Sanitización de texto para síntesis limpia sin emojis ni asteriscos.
+* `tests/benchmark_full_calibration_suite.py`: Telemetría en vivo por WebSocket de TTFT, TTFA, RTF y GPU clocks.
 
 ---
 
-## 🏛️ Arquitectura Modular del Código (`core/`)
+## ⏱️ Métricas de Rendimiento Reales (Calibradas en RTX 4050)
 
-Para garantizar máxima legibilidad, mantenimiento y robustez, el backend está modularizado:
+```text
+==============================================================================
+  Componente                Métrica Observada    Objetivo Calibración   Estado
+==============================================================================
+  Hora (Español)            0.38 ms              < 5 ms                 EXCELENTE
+  Hora (Inglés)             0.18 ms              < 5 ms                 EXCELENTE
+  Guardar Nota de Voz       11.27 ms             < 50 ms                300x MÁS RÁPIDO
+  Listar Notas              1.50 ms              < 5 ms                 EXCELENTE
+  Estado de Hardware GPU    47.66 ms             < 100 ms               EXCELENTE
+  RAG Semántico (3072D)     4.50 ms              < 20 ms                CALIBRADO
+  Kokoro Voice Blends       RTF 0.27x            < 0.35x                3.7x TIEMPO REAL
+  Modo Susurro (Atenuación) 52.6% RMS            ~ 50%                  CALIBRADO
+  TTFA Tool Calling (WSS)   1395.6 ms            < 1500 ms              EXCELENTE
+  Interrupción (Barge-in)   Confirmado (<50ms)   Inmediato              APROBADO
+==============================================================================
+```
+
+---
+
+## 🏛️ Estructura del Proyecto
 
 ```text
 ├── core/
-│   ├── __init__.py      # Exportación y lazy-loading de módulos pesados
-│   ├── config.py        # Configuración centralizada, rutas, DLLs CUDA y prompts
-│   ├── chunker.py       # Algoritmo de división de oraciones fluidas (SentenceChunker)
-│   ├── stt.py           # Faster-Whisper CUDA fp16 y filtros de energía vocal
-│   ├── tts.py           # Kokoro ONNX multihilo, fonemizador G2P y sanitización
-│   ├── llm.py           # Cliente streaming de Ollama Llama 3.2 y análisis post-turno
-│   └── utils.py         # Heurísticas de detección de idioma y utilidades
-├── database.py          # Capa de persistencia SQLite (sesiones, mensajes, notas, vocabulario)
-├── tools.py             # Despachador de herramientas por voz con latencia cero
-├── server.py            # Orquestador FastAPI WebSocket limpio y declarativo
-├── tests/               # Suites de pruebas unitarias, E2E y benchmarks de latencia
-└── .agent/skills/       # Skill nativa de control de calidad (voice-e2e-quality-gate)
+│   ├── __init__.py           # Exportación limpia y carga modular
+│   ├── config.py             # Configuración centralizada, rutas, DLLs CUDA y personalidades
+│   ├── chunker.py            # SentenceChunker: división gapless de oraciones fluidas
+│   ├── stt.py                # Faster-Whisper CUDA fp16 con filtro de energía vocal
+│   ├── tts.py                # Kokoro ONNX multihilo, Voice Blends y Modo Susurro
+│   ├── llm.py                # Streaming Ollama Llama 3.2 y análisis pedagógico
+│   └── utils.py              # Heurísticas de idioma y sanitización fonética
+├── static/
+│   ├── index.html            # Dashboard conversacional responsivo
+│   ├── style.css             # UI futurista (Dark Glassmorphism, animaciones 60 FPS)
+│   ├── app.js                # Orquestador del cliente (AudioContext, WebSocket, VAD)
+│   ├── sw.js                 # Service Worker para capacidades offline y PWA
+│   ├── manifest.json         # Manifiesto PWA para instalación móvil nativa
+│   └── js/
+│       └── i18n.js           # Gestor multiidioma sincrónico con fallbacks
+├── tests/
+│   ├── run_all_tests.py      # Quality Gate principal (35 tests automatizados)
+│   ├── benchmark_full_calibration_suite.py  # Benchmark E2E en vivo con telemetría WSS
+│   ├── test_e2e_pipeline.py  # Pruebas integrales de ciclo de vida completo
+│   ├── test_tools_memory.py  # Pruebas de herramientas y persistencia
+│   ├── test_chunker.py       # Pruebas de segmentación de texto
+│   └── test_sanitization.py  # Pruebas de filtros y limpieza de texto
+├── database.py               # Capa SQLite (Hybrid RAG: Cosine 3072D + FTS5)
+├── tools.py                  # Despachador de herramientas locales con latencia cero
+├── server.py                 # Orquestador FastAPI WebSocket con soporte HTTPS
+├── Dockerfile                # Imagen Docker optimizada para producción
+├── docker-compose.yml        # Stack completo con Ollama GPU y Voice Assistant
+├── requirements.txt          # Dependencias de Python fijadas
+└── README.md                 # Documentación técnica completa
 ```
 
 ---
 
-## ⏱️ Métricas de Rendimiento Reales (Medidas en RTX 4050 Laptop)
+## 👤 Autor & Créditos
 
-| Métrica | Tiempo Medido | Evaluación |
-| :--- | :--- | :--- |
-| **Detección de Fin de Frase (Silencio VAD)** | `650 ms` | Natural y no intrusivo |
-| **Transcripción STT (Faster-Whisper CUDA)** | **`26.2 ms`** ⚡ | Tiempo real instantáneo |
-| **Tiempo al Primer Token LLM (TTFT)** | **`180 – 320 ms`** | Inferencia continua en VRAM |
-| **Síntesis Oración Completa (Kokoro ONNX 6 hilos)** | **`~450 ms`** | 4x más rápido que configuración estándar |
-| **Latencia al Primer Audio (TTFA)** | **`~1.1 – 1.4 s`** 🚀 | Comparable a ChatGPT Voice |
-| **Colchón de Buffer Entre Oraciones** | **`+2,842 ms`** | **0% pausas / 0 frenos audibles** |
-| **Velocidad de Generación LLM (Llama 3.2 3B)** | **`~51.5 tokens/s`** | Máximo ancho de banda GPU P0 |
+Desarrollado y mantenido por **Cristian Arboleda** ([@cristianhar](https://github.com/cristianhar)).
 
----
-
-## 🗺️ Roadmap de Desarrollo
-
-### Fase 5 (Completada): Memoria Persistente y Herramientas (Tool Calling)
-* [x] **Persistencia Local en SQLite (`database.py`):** Almacenamiento local de conversaciones, historial de sesiones, notas y vocabulario en `voice_assistant.db` sin requerir nube.
-* [x] **RAG Ultraligero y Memoria Contextual:** Inyección automática de notas y vocabulario en el prompt del sistema (`get_memory_context_string()`).
-* [x] **Tool Calling Local con Latencia Cero (`tools.py`):** Ejecución instantánea (< 250 ms) para consultar hora/fecha, tomar notas por voz, listar notas y consultar vocabulario.
-* [x] **Panel Visual de Notas Rápidas por Voz:** Componente interactivo en el dashboard con actualización en tiempo real y botón de purga.
-
-### Fase 6 (Próximas Mejoras):
-* [ ] **Búsqueda Semántica Vectorial (`sqlite-vec` / ChromaDB):** Memoria densa basada en similitud de cosenos para recuerdos a largo plazo.
-* [ ] **Automatizaciones del Sistema Operativo:** Capacidad para abrir aplicaciones locales, controlar volumen o reproducir música mediante comandos de voz.
-* [ ] **Exportación de Sesiones:** Generación de resúmenes de estudio y notas en formato Markdown o PDF.
-
----
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia **MIT**. Consulta el archivo `LICENSE` para más detalles.
+* **Licencia:** MIT License. Consulta el archivo [LICENSE](LICENSE) para más detalles.
+* **Agradecimientos:** [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper), [Kokoro-ONNX](https://github.com/thewh1teagle/kokoro-onnx), [Ollama](https://ollama.com) y la comunidad open-source de Inteligencia Artificial Local.

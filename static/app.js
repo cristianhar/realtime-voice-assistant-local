@@ -874,6 +874,13 @@ function escapeHtml(text) {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
+    // Registro de Service Worker PWA para soporte móvil nativo
+    if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        navigator.serviceWorker.register('/static/sw.js')
+            .then(() => console.log('✓ Service Worker PWA activo'))
+            .catch((err) => console.debug('Service Worker info:', err));
+    }
+
     if (window.I18nManager) {
         await window.I18nManager.init();
     }
