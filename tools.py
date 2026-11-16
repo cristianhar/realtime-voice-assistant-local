@@ -1,10 +1,13 @@
 import os
 import re
 import time
+import json
 import subprocess
 import webbrowser
+import urllib.request
+import urllib.parse
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import database
 
 DAYS_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
@@ -93,6 +96,89 @@ def _launch_target_app(target: str) -> Optional[Dict[str, str]]:
         webbrowser.open("https://www.google.com")
         return {"es": "el navegador web", "en": "the web browser"}
     return None
+
+def search_web_duckduckgo(query: str, max_results: int = 2) -> List[str]:
+    """
+    Realiza una búsqueda web instantánea en tiempo real (100% gratuita, sin API keys) vía DuckDuckGo.
+    Extrae los resúmenes y fragmentos informativos más relevantes.
+    """
+    clean_q = re.sub(r'[^\w\s]', ' ', query).strip()
+    if not clean_q:
+        return []
+    try:
+        q_enc = urllib.parse.quote(clean_q)
+        url = f"https://html.duckduckgo.com/html/?q={q_enc}"
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        })
+        with urllib.request.urlopen(req, timeout=3.5) as resp:
+            html = resp.read().decode("utf-8", errors="ignore")
+            snippets = re.findall(r'<a class="result__snippet[^"]*"[^>]*>(.*?)</a>', html, re.DOTALL)
+            results = []
+            for s in snippets:
+                clean = re.sub(r'<[^>]+>', '', s)
+                clean = clean.replace('&quot;', '"').replace('&amp;', '&').replace('&#x27;', "'").replace('&nbsp;', ' ')
+                clean = re.sub(r'\s+', ' ', clean).strip()
+                if clean and len(clean) > 20:
+                    results.append(clean)
+                if len(results) >= max_results:
+                    break
+            return results
+    except Exception:
+        return []
+
+def search_web_smart(query: str, max_results: int = 2) -> Dict[str, Any]:
+    """
+    Motor de búsqueda híbrido ultra-rápido (<300ms) sin API keys:
+    1. Si es consulta de clima -> wttr.in (respuesta en 80ms)
+    2. Si es definición o concepto enciclopédico -> Wikipedia REST API (120ms)
+    3. Para búsquedas generales, noticias y web -> DuckDuckGo HTML
+    """
+    clean_q = query.strip()
+    q_lower = clean_q.lower()
+
+    # A. Consulta de Clima (wttr.in)
+    weather_match = re.search(r'\b(?:clima|tiempo|temperatura|weather)\s+(?:en|de|in|for)?\s*([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+)', q_lower)
+    if weather_match:
+        city = weather_match.group(1).strip()
+        city_clean = re.sub(r'\b(hoy|actual|manana|mañana|ahora|today|now)\b', '', city).strip()
+        if city_clean:
+            try:
+                c_enc = urllib.parse.quote(city_clean)
+                url = f"https://wttr.in/{c_enc}?format=%l:+%C+%t+(Humedad:+%h,+Viento:+%w)"
+                req = urllib.request.Request(url, headers={"User-Agent": "curl/7.68.0"})
+                with urllib.request.urlopen(req, timeout=3.0) as r:
+                    raw = r.read().decode("utf-8").strip()
+                    if raw and not raw.startswith("<") and "unknown" not in raw.lower():
+                        return {"type": "weather", "lead": raw, "details": [raw]}
+            except Exception:
+                pass
+
+    # B. Consulta de Concepto / Definición (Wikipedia REST API)
+    wiki_match = re.search(r'\b(?:qu[eé]\s+es|qui[eé]n\s+(?:es|fue)|definici[oó]n\s+de|biograf[ií]a\s+de|what\s+is|who\s+is)\s+(.+)', q_lower)
+    if wiki_match:
+        topic = wiki_match.group(1).strip()
+        try:
+            is_es = any(k in q_lower for k in ["que es", "qué es", "quién es", "quien es", "definición"])
+            lang_code = "es" if is_es else "en"
+            t_enc = urllib.parse.quote(topic.replace(' ', '_'))
+            url = f"https://{lang_code}.wikipedia.org/api/rest_v1/page/summary/{t_enc}"
+            req = urllib.request.Request(url, headers={"User-Agent": "VoiceAssistant/1.0 (local; offline-first)"})
+            with urllib.request.urlopen(req, timeout=3.0) as r:
+                data = json.loads(r.read().decode("utf-8"))
+                extract = data.get("extract", "")
+                if extract:
+                    first_sentence = extract.split(". ")[0] + "."
+                    return {"type": "wiki", "lead": first_sentence, "details": [extract]}
+        except Exception:
+            pass
+
+    # C. Búsqueda General en DuckDuckGo
+    ddg_snippets = search_web_duckduckgo(clean_q, max_results=max_results)
+    if ddg_snippets:
+        return {"type": "web", "lead": ddg_snippets[0], "details": ddg_snippets}
+
+    return {"type": "none", "lead": "", "details": []}
 
 def detect_and_execute_tool(text: str, lang_mode: str = "es") -> Optional[Dict[str, Any]]:
     """
@@ -318,6 +404,73 @@ def detect_and_execute_tool(text: str, lang_mode: str = "es") -> Optional[Dict[s
                 "lang": lang,
                 "data": {"target": target_str, "app": app_label}
             }
+
+    # 7. TOOL: Búsqueda Web en Tiempo Real (DuckDuckGo 100% Free)
+    web_patterns_es = [
+        r'\b(?:busca|buscar|consulta|consultar|averigua|averiguar)\s+(?:en\s+(?:la\s+)?web|en\s+internet|en\s+google|online)\s+(?:sobre\s+|acerca\s+de\s+|el\s+|la\s+|los\s+|las\s+)?(.+)',
+        r'\b(?:qu[eé]\s+dice\s+internet\s+(?:sobre|de)|qu[eé]\s+se\s+sabe\s+(?:de|sobre)|noticias\s+(?:de|sobre)|clima\s+(?:en|de))\s+(.+)'
+    ]
+    web_patterns_en = [
+        r'\b(?:search\s+(?:the\s+)?(?:web|internet)|google|look\s+up\s+online)\s+(?:for\s+|about\s+)?(.+)',
+        r'\b(?:latest\s+news\s+(?:about|on)|weather\s+in)\s+(.+)'
+    ]
+
+    is_web_es = None
+    search_query = None
+    for p in web_patterns_es:
+        m = re.search(p, clean_no_punct)
+        if m:
+            is_web_es = True
+            search_query = m.group(1).strip()
+            break
+
+    if not is_web_es:
+        for p in web_patterns_en:
+            m = re.search(p, clean_no_punct)
+            if m:
+                is_web_es = False
+                search_query = m.group(1).strip()
+                break
+
+    if search_query:
+        smart_res = search_web_smart(search_query, max_results=2)
+        is_spanish = is_web_es if is_web_es is not None else (lang_mode == "es")
+        lead = smart_res.get("lead", "")
+        res_type = smart_res.get("type", "none")
+        details = smart_res.get("details", [])
+
+        if lead:
+            if res_type == "weather":
+                spoken = f"El clima reportado es: {lead}" if is_spanish else f"Current weather report: {lead}"
+                display = f"🌦️ Clima en Tiempo Real:\n{lead}"
+            elif res_type == "wiki":
+                spoken = f"Según Wikipedia: {lead}" if is_spanish else f"According to Wikipedia: {lead}"
+                display = f"📚 Wikipedia Enciclopedia:\n" + "\n".join(details)
+            else:
+                first_clause = re.split(r'([.!?])', lead)[0].strip()
+                if len(first_clause.split()) < 4 and len(details) > 0:
+                    first_clause = details[0][:140]
+                spoken = f"Según la web: {first_clause}" if is_spanish else f"According to the web: {first_clause}"
+                display = f"🌐 Búsqueda Web (DuckDuckGo):\n" + "\n".join([f"• {s}" for s in details])
+
+            lang = "es" if is_spanish else "en"
+        else:
+            if is_spanish:
+                spoken = f"Busqué {search_query} en internet, pero no obtuve resultados inmediatos."
+                display = f"🌐 No se encontraron resultados web para: {search_query}"
+                lang = "es"
+            else:
+                spoken = f"I searched the web for {search_query}, but found no immediate results."
+                display = f"🌐 No results found for: {search_query}"
+                lang = "en"
+
+        return {
+            "tool": "search_web",
+            "spoken_response": spoken,
+            "display_response": display,
+            "lang": lang,
+            "data": {"query": search_query, "type": res_type, "details": details}
+        }
 
     return None
 

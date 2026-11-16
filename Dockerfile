@@ -32,3 +32,4 @@ EXPOSE 8000
 
 # Start Realtime Voice Assistant with HTTPS enabled for mobile microphone support
 CMD ["python", "server.py", "--https", "--host", "0.0.0.0", "--port", "8000"]
+

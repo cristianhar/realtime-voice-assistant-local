@@ -145,5 +145,20 @@ class TestToolsAndMemory(unittest.TestCase):
             self.assertTrue(len(prompt_es) > 50)
             self.assertTrue(len(prompt_en) > 50)
 
+    def test_search_web_tool(self):
+        from unittest.mock import patch
+        with patch("tools.search_web_smart") as mock_search:
+            mock_search.return_value = {
+                "type": "weather",
+                "lead": "Medellin: +24°C",
+                "details": ["Medellin: +24°C"]
+            }
+            res = tools.detect_and_execute_tool("busca en internet el clima en medellin", lang_mode="es")
+            self.assertIsNotNone(res)
+            self.assertEqual(res["tool"], "search_web")
+            self.assertEqual(res["lang"], "es")
+            self.assertIn("clima", res["spoken_response"].lower())
+            self.assertIn("Medellin", res["display_response"])
+
 if __name__ == "__main__":
     unittest.main()

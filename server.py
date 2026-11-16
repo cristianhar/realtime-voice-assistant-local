@@ -100,10 +100,15 @@ async def api_clear_history():
     database.clear_all_history()
     return {"status": "ok", "message": "Historial limpiado exitosamente"}
 
+@app.get("/api/gpu-status")
+async def api_get_gpu_status():
+    """Retorna telemetría en tiempo real de la GPU NVIDIA (temperatura, VRAM, estado)."""
+    return tools.query_gpu_status()
+
 @app.get("/api/notes")
-async def api_get_notes():
+async def api_get_notes(limit: int = 50):
     """Retorna notas de voz guardadas."""
-    return database.get_recent_notes(limit=20)
+    return database.get_recent_notes(limit=limit)
 
 @app.post("/api/notes")
 async def api_save_note(note_data: dict):
@@ -114,6 +119,42 @@ async def api_save_note(note_data: dict):
         return {"status": "error", "message": "Contenido vacío"}
     note_id = database.save_voice_note(content, title)
     return {"status": "ok", "note_id": note_id}
+
+@app.delete("/api/notes/{note_id}")
+async def api_delete_note(note_id: int):
+    """Elimina una nota de voz por ID."""
+    success = database.delete_voice_note(note_id)
+    return {"status": "ok" if success else "not_found", "deleted": success}
+
+@app.post("/api/notes/synthesize")
+async def api_synthesize_notes():
+    """Sintetiza de forma ejecutiva todas las notas recientes usando Llama 3.2."""
+    notes = database.get_recent_notes(limit=25)
+    if not notes:
+        return {"status": "empty", "summary": "No tienes notas guardadas para sintetizar todavía."}
+    
+    bullets = "\n".join([f"• [{n['title']}]: {n['content']}" for n in notes])
+    prompt = f"Eres un asistente ejecutivo. Analiza y sintetiza en 3 o 4 viñetas accionables, claras y concisas las siguientes notas de voz del usuario:\n\n{bullets}\n\nConcluye con un breve mensaje motivador de 1 frase."
+    
+    try:
+        ollama_url = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+        data = json.dumps({
+            "model": "llama3.2:3b",
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "keep_alive": -1
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            f"{ollama_url}/api/chat",
+            data=data,
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=12.0) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+            summary = body.get("message", {}).get("content", "").strip()
+            return {"status": "ok", "summary": summary, "count": len(notes)}
+    except Exception as e:
+        return {"status": "error", "summary": f"No se pudo generar la síntesis automática: {e}"}
 
 @app.get("/api/personalities")
 async def api_get_personalities():
@@ -423,6 +464,7 @@ async def websocket_chat_endpoint(websocket: WebSocket):
 
                 full_ai_response = []
                 sentence_buffer = ""
+                chunks_sent = 0
 
                 for line in res.iter_lines():
                     if is_interrupted or gen_id != current_generation_id:
@@ -445,9 +487,11 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                         "delta": delta
                     })
 
-                    # División continua de oraciones usando el SentenceChunker modular
-                    ready_sentence, remaining, should_split = SentenceChunker.extract_ready_sentence(sentence_buffer)
+                    # División continua de oraciones usando el SentenceChunker modular con aceleración sub-600ms
+                    is_first = (chunks_sent == 0)
+                    ready_sentence, remaining, should_split = SentenceChunker.extract_ready_sentence(sentence_buffer, is_first_chunk=is_first)
                     if should_split and ready_sentence and not is_interrupted and gen_id == current_generation_id:
+                        chunks_sent += 1
                         sentence_buffer = remaining
                         is_es = (current_mode == "es") or is_text_spanish(ready_sentence)
                         chunk_voice = current_spanish_voice if is_es else current_english_voice

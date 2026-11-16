@@ -335,6 +335,20 @@ def get_recent_notes(limit: int = 10) -> List[Dict[str, Any]]:
         """, (limit,))
         return [dict(r) for r in cursor.fetchall()]
 
+def delete_voice_note(note_id: int) -> bool:
+    """Elimina una nota por ID de la base de datos, FTS5 y caché de vectores."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM notes WHERE id = ?", (note_id,))
+        deleted = cursor.rowcount > 0
+        try:
+            cursor.execute("DELETE FROM notes_fts WHERE note_id = ?", (note_id,))
+            cursor.execute("DELETE FROM embeddings_cache WHERE doc_type = 'note' AND ref_id = ?", (note_id,))
+        except Exception:
+            pass
+        conn.commit()
+        return deleted
+
 def get_user_profile() -> Dict[str, str]:
     """Retorna las propiedades y preferencias del usuario."""
     with get_connection() as conn:

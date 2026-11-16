@@ -52,7 +52,15 @@
                     </select>
                 </div>
                 <span id="user-profile-badge" class="user-badge" title="Perfil activo">👤 Cristian Arboleda</span>
-                <span class="hardware-badge">RTX CUDA · Whisper Multilingual · Kokoro</span>
+                <button id="btn-open-notes-drawer" class="notes-header-btn" title="Ver y gestionar mis notas de voz">
+                    <span class="notes-btn-icon">📝</span>
+                    <span class="notes-btn-text">Notas</span>
+                    <span id="header-notes-counter" class="notes-btn-badge">0</span>
+                </button>
+                <div id="gpu-telemetry-pill" class="gpu-telemetry-pill" title="Telemetría NVIDIA RTX en tiempo real">
+                    <span class="gpu-telemetry-dot"></span>
+                    <span id="gpu-telemetry-label">RTX GPU • --°C</span>
+                </div>
             </div>
         </header>
 
@@ -250,6 +258,44 @@
             </aside>
         </main>
     </div>
+
+    <!-- Slide-over Drawer de Gestión de Notas de Voz -->
+    <div id="notes-drawer-overlay" class="drawer-overlay"></div>
+    <aside id="notes-drawer" class="notes-drawer">
+        <div class="drawer-header">
+            <div class="drawer-title-group">
+                <span class="drawer-icon">📝</span>
+                <h3 class="drawer-title">Mis Notas de Voz</h3>
+            </div>
+            <button id="btn-close-notes-drawer" class="drawer-close-btn" title="Cerrar">&times;</button>
+        </div>
+
+        <div class="drawer-toolbar">
+            <input type="text" id="notes-search-input" class="notes-search-box" placeholder="🔍 Buscar en mis notas...">
+            <div class="drawer-actions">
+                <button id="btn-synthesize-notes" class="drawer-action-btn primary" title="Sintetizar notas con LLaMA 3.2">
+                    <span>✨ Sintetizar con IA</span>
+                </button>
+                <button id="btn-export-notes-md" class="drawer-action-btn secondary" title="Exportar notas a Markdown">
+                    <span>📥 Exportar</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Caja de Resumen Ejecutivo con IA -->
+        <div id="notes-ai-summary-card" class="ai-summary-card" style="display: none;">
+            <div class="summary-header">
+                <span>🤖 Síntesis Ejecutiva (LLaMA 3.2)</span>
+                <button id="btn-close-summary" class="summary-close-btn">&times;</button>
+            </div>
+            <div id="notes-ai-summary-content" class="summary-body"></div>
+        </div>
+
+        <!-- Lista de Tarjetas de Notas -->
+        <div id="notes-cards-container" class="notes-cards-container">
+            <div class="notes-loading">Cargando notas...</div>
+        </div>
+    </aside>
 
     <script src="/static/js/i18n.js"></script>
     <script src="/static/js/wav-encoder.js"></script>

@@ -1010,29 +1010,222 @@ window.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
+    let allLoadedNotes = [];
+
     // Cargar notas persistentes de voz desde SQLite
     async function loadPersistentNotes() {
         const notesList = document.getElementById("notes-list");
-        if (!notesList) return;
+        const headerNotesCounter = document.getElementById("header-notes-counter");
         try {
             const res = await fetch("/api/notes");
             if (res.ok) {
                 const notes = await res.json();
-                if (notes && notes.length > 0) {
-                    notesList.innerHTML = "";
-                    notes.forEach(n => {
-                        const div = document.createElement("div");
-                        div.className = "note-item";
-                        div.innerHTML = `<strong>${escapeHtml(n.title)}</strong><span>${escapeHtml(n.content)}</span>`;
-                        notesList.appendChild(div);
-                    });
-                } else {
-                    notesList.innerHTML = '<div class="empty-tip">No hay notas guardadas todavía. Di: "Toma nota de..."</div>';
+                allLoadedNotes = notes || [];
+                if (headerNotesCounter) {
+                    headerNotesCounter.innerText = allLoadedNotes.length.toString();
+                }
+
+                if (notesList) {
+                    if (allLoadedNotes && allLoadedNotes.length > 0) {
+                        notesList.innerHTML = "";
+                        allLoadedNotes.slice(0, 10).forEach(n => {
+                            const div = document.createElement("div");
+                            div.className = "note-item";
+                            div.innerHTML = `<strong>${escapeHtml(n.title)}</strong><span>${escapeHtml(n.content)}</span>`;
+                            notesList.appendChild(div);
+                        });
+                    } else {
+                        notesList.innerHTML = '<div class="empty-tip">No hay notas guardadas todavía. Di: "Toma nota de..."</div>';
+                    }
+                }
+
+                // Si el drawer está abierto, refrescarlo
+                const notesDrawer = document.getElementById("notes-drawer");
+                if (notesDrawer && notesDrawer.classList.contains("open")) {
+                    renderDrawerNotes(allLoadedNotes);
                 }
             }
         } catch (e) {
             console.warn("No se pudo cargar notas persistentes:", e);
         }
+    }
+
+    // Polling de Telemetría GPU NVIDIA en tiempo real
+    const gpuTelemetryPill = document.getElementById("gpu-telemetry-pill");
+    const gpuTelemetryLabel = document.getElementById("gpu-telemetry-label");
+
+    async function pollGpuTelemetry() {
+        if (!gpuTelemetryPill || !gpuTelemetryLabel) return;
+        try {
+            const res = await fetch("/api/gpu-status");
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.available) {
+                    const temp = data.temperature_c || 0;
+                    const used = data.memory_used_gb || 0;
+                    const total = data.memory_total_gb || 6.0;
+                    const pct = Math.round((used / total) * 100);
+
+                    gpuTelemetryLabel.innerText = `RTX 4050 • ${temp}°C • ${used}/${total}GB (${pct}%)`;
+                    gpuTelemetryPill.classList.remove("warm", "hot");
+                    if (temp >= 80) {
+                        gpuTelemetryPill.classList.add("hot");
+                    } else if (temp >= 70) {
+                        gpuTelemetryPill.classList.add("warm");
+                    }
+                } else {
+                    gpuTelemetryLabel.innerText = "GPU Fallback (CPU)";
+                }
+            }
+        } catch (_) {}
+    }
+
+    pollGpuTelemetry();
+    setInterval(pollGpuTelemetry, 4500);
+
+    // Control del Slide-over Drawer de Notas de Voz
+    const btnOpenDrawer = document.getElementById("btn-open-notes-drawer");
+    const btnCloseDrawer = document.getElementById("btn-close-notes-drawer");
+    const drawerOverlay = document.getElementById("notes-drawer-overlay");
+    const notesDrawer = document.getElementById("notes-drawer");
+    const notesCardsContainer = document.getElementById("notes-cards-container");
+    const searchNotesInput = document.getElementById("notes-search-input");
+    const btnSynthesizeNotes = document.getElementById("btn-synthesize-notes");
+    const btnExportNotesMd = document.getElementById("btn-export-notes-md");
+    const summaryCard = document.getElementById("notes-ai-summary-card");
+    const summaryBody = document.getElementById("notes-ai-summary-content");
+    const btnCloseSummary = document.getElementById("btn-close-summary");
+
+    function openNotesDrawer() {
+        if (notesDrawer && drawerOverlay) {
+            notesDrawer.classList.add("open");
+            drawerOverlay.classList.add("active");
+            renderDrawerNotes(allLoadedNotes);
+        }
+    }
+
+    function closeNotesDrawer() {
+        if (notesDrawer && drawerOverlay) {
+            notesDrawer.classList.remove("open");
+            drawerOverlay.classList.remove("active");
+        }
+    }
+
+    if (btnOpenDrawer) btnOpenDrawer.addEventListener("click", openNotesDrawer);
+    if (btnCloseDrawer) btnCloseDrawer.addEventListener("click", closeNotesDrawer);
+    if (drawerOverlay) drawerOverlay.addEventListener("click", closeNotesDrawer);
+
+    if (btnCloseSummary && summaryCard) {
+        btnCloseSummary.addEventListener("click", () => {
+            summaryCard.style.display = "none";
+        });
+    }
+
+    function renderDrawerNotes(notes) {
+        if (!notesCardsContainer) return;
+        const q = (searchNotesInput ? searchNotesInput.value.toLowerCase().trim() : "");
+        const filtered = (notes || []).filter(n => 
+            (n.title && n.title.toLowerCase().includes(q)) || 
+            (n.content && n.content.toLowerCase().includes(q))
+        );
+
+        if (!filtered || filtered.length === 0) {
+            notesCardsContainer.innerHTML = '<div class="empty-tip" style="padding: 30px; text-align: center;">No hay notas que coincidan con la búsqueda.</div>';
+            return;
+        }
+
+        notesCardsContainer.innerHTML = "";
+        filtered.forEach(n => {
+            const card = document.createElement("div");
+            card.className = "note-item-card";
+            card.innerHTML = `
+                <div class="note-card-header">
+                    <h4 class="note-card-title">${escapeHtml(n.title)}</h4>
+                    <button class="note-delete-btn" data-id="${n.id}" title="Eliminar nota">🗑️</button>
+                </div>
+                <div class="note-card-content">${escapeHtml(n.content)}</div>
+                <div class="note-card-date">${escapeHtml(n.created_at || "")}</div>
+            `;
+            notesCardsContainer.appendChild(card);
+        });
+
+        // Conectar botones de eliminación
+        notesCardsContainer.querySelectorAll(".note-delete-btn").forEach(btn => {
+            btn.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                const noteId = btn.getAttribute("data-id");
+                if (confirm("¿Deseas eliminar esta nota de voz?")) {
+                    try {
+                        const res = await fetch(`/api/notes/${noteId}`, { method: "DELETE" });
+                        if (res.ok) {
+                            allLoadedNotes = allLoadedNotes.filter(n => n.id != noteId);
+                            renderDrawerNotes(allLoadedNotes);
+                            loadPersistentNotes();
+                        }
+                    } catch (err) {
+                        console.error("Error al eliminar nota:", err);
+                    }
+                }
+            });
+        });
+    }
+
+    if (searchNotesInput) {
+        searchNotesInput.addEventListener("input", () => {
+            renderDrawerNotes(allLoadedNotes);
+        });
+    }
+
+    // Botón Sintetizar con IA (LLaMA 3.2 3B)
+    if (btnSynthesizeNotes) {
+        btnSynthesizeNotes.addEventListener("click", async () => {
+            if (allLoadedNotes.length === 0) {
+                alert("No tienes notas guardadas para sintetizar.");
+                return;
+            }
+            btnSynthesizeNotes.disabled = true;
+            btnSynthesizeNotes.innerText = "⏳ Sintetizando...";
+            try {
+                const res = await fetch("/api/notes/synthesize", { method: "POST" });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (summaryCard && summaryBody) {
+                        summaryBody.innerText = data.summary || "Sin resumen disponible.";
+                        summaryCard.style.display = "block";
+                    }
+                }
+            } catch (err) {
+                alert("Error al contactar con el modelo de síntesis.");
+            } finally {
+                btnSynthesizeNotes.disabled = false;
+                btnSynthesizeNotes.innerHTML = "<span>✨ Sintetizar con IA</span>";
+            }
+        });
+    }
+
+    // Exportar notas a Markdown
+    if (btnExportNotesMd) {
+        btnExportNotesMd.addEventListener("click", () => {
+            if (allLoadedNotes.length === 0) {
+                alert("No hay notas para exportar.");
+                return;
+            }
+            let md = `# 📝 Mis Notas de Voz - Voice Assistant\n\n`;
+            md += `Generado el: ${new Date().toLocaleString()}\n\n---\n\n`;
+            allLoadedNotes.forEach((n, idx) => {
+                md += `### ${idx + 1}. ${n.title}\n`;
+                md += `*Fecha: ${n.created_at || 'N/A'}*\n\n`;
+                md += `${n.content}\n\n`;
+            });
+
+            const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `notas_voz_${new Date().toISOString().slice(0, 10)}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
     }
 
     // Cargar historial reciente de conversación desde SQLite
