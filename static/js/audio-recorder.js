@@ -91,12 +91,12 @@ class AudioRecorderManager {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
 
             const source = this.audioContext.createMediaStreamSource(this.mediaStream);
-            const micAnalyser = this.audioContext.createAnalyser();
-            micAnalyser.fftSize = 256;
-            source.connect(micAnalyser);
+            this.micAnalyser = this.audioContext.createAnalyser();
+            this.micAnalyser.fftSize = 256;
+            source.connect(this.micAnalyser);
 
             if (window.AudioVisualizer) {
-                window.AudioVisualizer.setAnalyser(micAnalyser);
+                window.AudioVisualizer.setAnalyser(this.micAnalyser);
             }
 
             const gainNode = this.audioContext.createGain();
@@ -128,11 +128,42 @@ class AudioRecorderManager {
 
     handleCallModeAudio(inputData) {
         let sum = 0;
+        let zeroCrossings = 0;
         for (let i = 0; i < inputData.length; i++) {
             sum += inputData[i] * inputData[i];
+            if (i > 0 && ((inputData[i] >= 0 && inputData[i-1] < 0) || (inputData[i] < 0 && inputData[i-1] >= 0))) {
+                zeroCrossings++;
+            }
         }
         const rms = Math.sqrt(sum / inputData.length);
-        const isSpeaking = rms > this.vadThreshold;
+        const zcr = zeroCrossings / inputData.length;
+
+        // Análisis espectral de formantes vocales vs ruido parásito (respiración / clics de teclado)
+        let isVoiceFormant = true;
+        if (this.micAnalyser) {
+            if (!this.freqData) this.freqData = new Uint8Array(this.micAnalyser.frequencyBinCount);
+            this.micAnalyser.getByteFrequencyData(this.freqData);
+
+            let subBassEnergy = 0;   // < 125 Hz (viento, soplido, choque de aire)
+            let voiceEnergy = 0;    // 250 Hz - 3000 Hz (formantes vocales F1-F3)
+            let highClickEnergy = 0; // > 4000 Hz (teclado mecánico, chasquidos)
+
+            for (let b = 0; b <= 1; b++) subBassEnergy += this.freqData[b];
+            for (let b = 4; b <= 48; b++) voiceEnergy += this.freqData[b];
+            for (let b = 64; b < this.freqData.length; b++) highClickEnergy += this.freqData[b];
+
+            const total = subBassEnergy + voiceEnergy + highClickEnergy + 1;
+            // Filtrar soplido de respiración directo al micrófono
+            if (subBassEnergy / total > 0.78 && voiceEnergy / total < 0.18) {
+                isVoiceFormant = false;
+            }
+            // Filtrar ruidos impulsivos de teclado mecánico (>4 kHz con alto ZCR)
+            else if (highClickEnergy / total > 0.65 && zcr > 0.30) {
+                isVoiceFormant = false;
+            }
+        }
+
+        const isSpeaking = (rms > this.vadThreshold) && (zcr < 0.38) && isVoiceFormant;
 
         this.onMicLevel(rms, isSpeaking);
 

@@ -28,3 +28,25 @@ def is_text_spanish(text: str) -> bool:
     words = set(re.findall(r'\b\w+\b', lower))
     return len(words.intersection(COMMON_SPANISH_WORDS)) > 0
 
+CONVERSATIONAL_FILLERS = {
+    "es": {
+        "thinking": ["Mmm...", "A ver...", "Veamos..."],
+        "agreement": ["Claro...", "Por supuesto...", "Entendido..."],
+        "searching": ["Un segundo...", "Déjame revisar...", "Buscando..."]
+    },
+    "en": {
+        "thinking": ["Mmm...", "Let's see...", "Well..."],
+        "agreement": ["Sure...", "Got it...", "Right..."],
+        "searching": ["One second...", "Let me check...", "Looking that up..."]
+    }
+}
+
+def get_conversational_filler(lang: str = "es", intent: str = "thinking") -> str:
+    """Retorna un filler orgánico contextual para simular pausas cognitivas humanas."""
+    lang_key = "es" if lang.startswith("es") else "en"
+    intent_key = intent if intent in CONVERSATIONAL_FILLERS[lang_key] else "thinking"
+    options = CONVERSATIONAL_FILLERS[lang_key][intent_key]
+    import random
+    return random.choice(options)
+
+

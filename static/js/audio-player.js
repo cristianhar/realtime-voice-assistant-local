@@ -40,8 +40,13 @@ class AudioPlayerManager {
             this.isAudioPlaying = false;
             this.currentAudioElement = null;
             window.isAudioPlaying = false;
+            if (window.voiceHumanizer) window.voiceHumanizer.resetTurn();
             this.onPlayEnd();
             return;
+        }
+
+        if (!this.isAudioPlaying && window.voiceHumanizer) {
+            window.voiceHumanizer.playPreSpeechBreath();
         }
 
         this.isAudioPlaying = true;
@@ -74,6 +79,7 @@ class AudioPlayerManager {
         this.audioQueue.length = 0;
         this.isAudioPlaying = false;
         window.isAudioPlaying = false;
+        if (window.voiceHumanizer) window.voiceHumanizer.resetTurn();
         this.onInterrupt();
     }
 }

@@ -12,13 +12,17 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Llama_3.2_3B-black.svg)](https://ollama.com/)
 [![Kokoro ONNX](https://img.shields.io/badge/Kokoro--TTS-82M_ONNX-FF6F00.svg)](https://github.com/thewh1teagle/kokoro-onnx)
 [![PWA](https://img.shields.io/badge/PWA-Mobile_Ready-purple.svg)](https://web.dev/progressive-web-apps/)
-[![Tests Passing](https://img.shields.io/badge/Quality_Gate-42%2F42_Passing-brightgreen.svg)](tests/run_all_tests.py)
+[![Tests Passing](https://img.shields.io/badge/Quality_Gate-47%2F47_Passing-brightgreen.svg)](tests/run_all_tests.py)
 [![CI Quality Gate](https://img.shields.io/github/actions/workflow/status/cristianhar/realtime-voice-assistant-local/ci.yml?branch=main&label=CI%20Quality%20Gate)](https://github.com/cristianhar/realtime-voice-assistant-local/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Un asistente de voz full-duplex en tiempo real (similar a **ChatGPT Voice Mode**), diseñado para funcionar **100% local, privado, sin conexión a internet y optimizado para GPUs NVIDIA RTX de 6 GB VRAM** (como RTX 4050 / RTX 4060 Laptop o superiores).
 
 Permite mantener llamadas de voz continuas con **manos libres**, transcripción instantánea palabra por palabra, interrupciones al vuelo (**barge-in**), memoria semántica densa (Hybrid RAG), mezclas de voces interpoladas en tiempo real (**Voice Blends**), modo susurro (**Whisper Mode**), soporte para móviles vía **HTTPS / PWA** y despliegue rápido con **Docker & Docker Compose**.
+
+<p align="center">
+  <img src="docs/images/voice_assistant_demo.gif" alt="Demostración Asistente de Voz Local Full-Duplex" width="720"/>
+</p>
 
 ---
 

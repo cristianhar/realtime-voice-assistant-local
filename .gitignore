@@ -16,6 +16,7 @@ __pycache__/
 *.mp3
 *.ogg
 *.flac
+!static/audio/*.wav
 
 # Large Model weights (Exceed GitHub 100MB limit)
 # Run the setup script to download them automatically
