@@ -17,7 +17,8 @@ from core.config import (
     STATIC_DIR,
     DB_PATH
 )
-from core.utils import is_text_spanish
+from core.utils import is_text_spanish, configure_utf8_stdio
+configure_utf8_stdio()
 from core.chunker import SentenceChunker
 from core.llm import fetch_ollama_chat_stream, fast_analyze_turn
 import database

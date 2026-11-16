@@ -1,4 +1,14 @@
+import sys
 import re
+
+def configure_utf8_stdio():
+    """Garantiza codificación UTF-8 en stdout y stderr para consolas Windows y CI."""
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
 
 SPANISH_CHARS = set("áéíóúüñ¿¡")
 COMMON_SPANISH_WORDS = {

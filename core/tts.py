@@ -15,7 +15,7 @@ def load_tts_model():
     opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
     sess = ort.InferenceSession(KOKORO_ONNX_PATH, sess_options=opts, providers=["CPUExecutionProvider"])
     model = Kokoro.from_session(sess, KOKORO_VOICES_PATH)
-    print("✓ Kokoro listo con sesión multihilo de alto rendimiento (~450 ms)")
+    print("[TTS] Kokoro listo con sesión multihilo de alto rendimiento (~450 ms)")
     return model
 
 def clean_tts_text(text: str) -> str:

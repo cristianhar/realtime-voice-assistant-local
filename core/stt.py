@@ -12,12 +12,12 @@ def load_stt_model() -> WhisperModel:
         model = WhisperModel("base", device="cuda", compute_type="float16")
         # Inferencia warm-up para inicializar kernels de CUDA
         list(model.transcribe(np.zeros(16000, dtype=np.float32), beam_size=1)[0])
-        print("✓ Faster-Whisper activo en GPU CUDA (~26 ms)")
+        print("[STT] Faster-Whisper activo en GPU CUDA (~26 ms)")
         return model
     except Exception as e:
         print(f"[STT] Fallback a CPU int8 por excepción: {e}")
         model = WhisperModel("base", device="cpu", compute_type="int8", cpu_threads=4)
-        print("✓ Faster-Whisper activo en CPU (int8)")
+        print("[STT] Faster-Whisper activo en CPU (int8)")
         return model
 
 def transcribe_audio_bytes(stt_model: WhisperModel, audio_bytes: bytes, lang_mode: str = "auto") -> Tuple[str, int, str]:

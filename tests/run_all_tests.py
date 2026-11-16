@@ -8,6 +8,9 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from core.utils import configure_utf8_stdio
+configure_utf8_stdio()
+
 def run_all_e2e_and_unit_tests():
     print("=" * 70)
     print("  EJECUTANDO SUITE COMPLETA DE PRUEBAS END-TO-END Y UNITARIAS")
@@ -31,9 +34,9 @@ def run_all_e2e_and_unit_tests():
     for mod in test_modules:
         try:
             suite.addTests(loader.loadTestsFromName(mod))
-            print(f"✓ Módulo cargado: {mod}")
+            print(f"[OK] Modulo cargado: {mod}")
         except Exception as e:
-            print(f"✗ Error cargando {mod}: {e}")
+            print(f"[ERROR] Error cargando {mod}: {e}")
 
     print("-" * 70)
     runner = unittest.TextTestRunner(verbosity=2)
@@ -51,10 +54,10 @@ def run_all_e2e_and_unit_tests():
     print("=" * 70)
 
     if not result.wasSuccessful():
-        print("❌ FALLO: Hay pruebas que no pasaron. Revisa los errores antes de hacer commit.")
+        print("[FALLO] Hay pruebas que no pasaron. Revisa los errores antes de hacer commit.")
         sys.exit(1)
     else:
-        print("✅ ÉXITO TOTAL: Todas las pruebas End-to-End y unitarias pasaron con éxito.")
+        print("[EXITO] Todas las pruebas End-to-End y unitarias pasaron con exito.")
         sys.exit(0)
 
 if __name__ == "__main__":

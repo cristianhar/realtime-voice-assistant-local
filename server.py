@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
     print("Inicializando componentes modulares del Asistente de Voz...")
     stt_model = load_stt_model()
     tts_model = load_tts_model()
-    print(f"✓ Modelo LLM configurado: {MODEL_NAME}")
+    print(f"[OK] Modelo LLM configurado: {MODEL_NAME}")
 
     # Verificación de salud y conectividad de Ollama
     try:
@@ -58,9 +58,9 @@ async def lifespan(app: FastAPI):
         req = urllib.request.Request(f"{OLLAMA_URL}/api/tags")
         with urllib.request.urlopen(req, timeout=1.5) as resp:
             if resp.status == 200:
-                print(f"✓ Ollama activo y respondiendo en {OLLAMA_URL}")
+                print(f"[OK] Ollama activo y respondiendo en {OLLAMA_URL}")
     except Exception:
-        print(f"⚠️ AVISO: Ollama no respondió en {OLLAMA_URL}. Recuerda iniciar 'ollama serve' o 'ollama run {MODEL_NAME}'.")
+        print(f"[AVISO] Ollama no respondió en {OLLAMA_URL}. Recuerda iniciar 'ollama serve' o 'ollama run {MODEL_NAME}'.")
 
     print("=" * 60)
     yield
@@ -179,7 +179,7 @@ async def api_set_profile(profile_data: dict):
 @app.websocket("/ws/chat")
 async def websocket_chat_endpoint(websocket: WebSocket):
     await websocket.accept()
-    print("✓ Cliente conectado al WebSocket.")
+    print("[OK] Cliente conectado al WebSocket.")
 
     current_mode = "en"
     current_personality = DEFAULT_PERSONALITY
@@ -653,9 +653,9 @@ def ensure_ssl_certificates(local_ip: str) -> tuple:
                 f.write(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()))
             with open(cert_path, "wb") as f:
                 f.write(cert.public_bytes(serialization.Encoding.PEM))
-            print("✓ Certificados SSL generados exitosamente en certs/")
+            print("[OK] Certificados SSL generados exitosamente en certs/")
         except Exception as e:
-            print(f"⚠️ No se pudieron generar certificados SSL: {e}")
+            print(f"[AVISO] No se pudieron generar certificados SSL: {e}")
             return None, None
 
     return cert_path, key_path
