@@ -154,11 +154,23 @@
 
                 <!-- Vocabulario Aprendido / Frases clave -->
                 <div class="panel-card vocabulary-card">
-                    <div class="panel-header">
-                        <h4>📝 Historial de Frases</h4>
+                    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h4>📝 Vocabulario & Frases</h4>
+                        <button id="clear-history-btn" class="mini-icon-btn" title="Limpiar historial y vocabulario local">🗑️</button>
                     </div>
                     <div id="vocabulary-list" class="vocabulary-list">
                         <div class="empty-tip">Aquí se guardarán las oraciones clave de la sesión.</div>
+                    </div>
+                </div>
+
+                <!-- Notas y Recordatorios de Voz (Tool Calling) -->
+                <div class="panel-card notes-card">
+                    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h4>📌 Notas Rápidas por Voz</h4>
+                        <span class="badge" style="font-size: 0.72rem; padding: 2px 6px;">Tool Calling</span>
+                    </div>
+                    <div id="notes-list" class="notes-list">
+                        <div class="empty-tip">Di "Toma nota de..." o "Recuérdame..." para guardar notas por voz.</div>
                     </div>
                 </div>
 

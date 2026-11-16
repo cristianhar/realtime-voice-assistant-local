@@ -135,6 +135,10 @@ function handleServerMessage(data) {
             }
             break;
 
+        case "tool_executed":
+            handleToolExecuted(data);
+            break;
+
         case "user_translation":
             updateUserTranslation(data.translation || data.spanish, data.turn_id);
             break;
@@ -868,4 +872,128 @@ window.addEventListener("DOMContentLoaded", () => {
             }
         });
     });
+
+    // Manejo de ejecución de herramientas directas (Tool Calling)
+    function handleToolExecuted(data) {
+        const { turn_id, tool, display_text } = data;
+        const textEl = document.getElementById(`ai-text-${turn_id}`);
+        if (textEl) {
+            textEl.innerHTML = `<div class="tool-badge">🔧 Herramienta: ${escapeHtml(tool)}</div><div>${escapeHtml(display_text)}</div>`;
+        }
+        if (tool === "save_voice_note" || tool === "list_voice_notes") {
+            loadPersistentNotes();
+        }
+        if (tool === "list_vocabulary") {
+            loadPersistentVocabulary();
+        }
+    }
+
+    // Cargar notas persistentes de voz desde SQLite
+    async function loadPersistentNotes() {
+        const notesList = document.getElementById("notes-list");
+        if (!notesList) return;
+        try {
+            const res = await fetch("/api/notes");
+            if (res.ok) {
+                const notes = await res.json();
+                if (notes && notes.length > 0) {
+                    notesList.innerHTML = "";
+                    notes.forEach(n => {
+                        const div = document.createElement("div");
+                        div.className = "note-item";
+                        div.innerHTML = `<strong>${escapeHtml(n.title)}</strong><span>${escapeHtml(n.content)}</span>`;
+                        notesList.appendChild(div);
+                    });
+                } else {
+                    notesList.innerHTML = '<div class="empty-tip">No hay notas guardadas todavía. Di: "Toma nota de..."</div>';
+                }
+            }
+        } catch (e) {
+            console.warn("No se pudo cargar notas persistentes:", e);
+        }
+    }
+
+    // Cargar historial reciente de conversación desde SQLite
+    async function loadPersistentHistory() {
+        try {
+            const res = await fetch("/api/history");
+            if (res.ok) {
+                const msgs = await res.json();
+                if (msgs && msgs.length > 0 && chatMessages) {
+                    const welcomeCard = chatMessages.querySelector(".welcome-card");
+                    if (welcomeCard) welcomeCard.remove();
+                    
+                    msgs.forEach(m => {
+                        const bubble = document.createElement("div");
+                        bubble.className = `message-bubble ${m.role}`;
+                        const timeStr = m.created_at ? (m.created_at.includes(" ") ? m.created_at.split(" ")[1] : m.created_at) : "";
+                        const roleLabel = m.role === "user" ? "👤 Tú (Historial)" : "🤖 Asistente (Historial)";
+                        bubble.innerHTML = `
+                            <div class="bubble-header">
+                                <span class="bubble-role">${roleLabel}</span>
+                                <span class="bubble-time">${timeStr}</span>
+                            </div>
+                            <div class="bubble-text-en">${escapeHtml(m.content)}</div>
+                            ${m.translation ? `<div class="bubble-text-es"><span>🇪🇸</span> ${escapeHtml(m.translation)}</div>` : ""}
+                        `;
+                        chatMessages.appendChild(bubble);
+                    });
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            }
+        } catch (e) {
+            console.warn("No se pudo cargar historial:", e);
+        }
+    }
+
+    // Cargar vocabulario persistente desde SQLite
+    async function loadPersistentVocabulary() {
+        try {
+            const res = await fetch("/api/vocabulary");
+            if (res.ok) {
+                const items = await res.json();
+                if (items && items.length > 0 && vocabularyList) {
+                    vocabularyList.innerHTML = "";
+                    items.forEach(v => {
+                        const div = document.createElement("div");
+                        div.className = "vocab-item";
+                        div.innerHTML = `<strong>• ${escapeHtml(v.phrase)}</strong>${v.tip ? `<br><small style="color: #93c5fd;">💡 ${escapeHtml(v.tip)}</small>` : ''}`;
+                        div.style.padding = "6px 0";
+                        div.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+                        vocabularyList.appendChild(div);
+                    });
+                }
+            }
+        } catch (e) {
+            console.warn("No se pudo cargar vocabulario persistente:", e);
+        }
+    }
+
+    // Inicializar datos persistentes en el arranque
+    loadPersistentVocabulary();
+    loadPersistentNotes();
+    loadPersistentHistory();
+
+    const clearHistoryBtn = document.getElementById("clear-history-btn");
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener("click", async () => {
+            if (confirm("¿Deseas vaciar la base de datos de conversaciones, notas y vocabulario guardado?")) {
+                try {
+                    await fetch("/api/history", { method: "DELETE" });
+                    if (vocabularyList) {
+                        vocabularyList.innerHTML = '<div class="empty-tip">Historial y vocabulario limpiados.</div>';
+                    }
+                    const notesList = document.getElementById("notes-list");
+                    if (notesList) {
+                        notesList.innerHTML = '<div class="empty-tip">Di "Toma nota de..." para guardar notas por voz.</div>';
+                    }
+                    if (chatMessages) {
+                        chatMessages.innerHTML = '';
+                    }
+                } catch (err) {
+                    console.error("Error al limpiar historial:", err);
+                }
+            }
+        });
+    }
 });

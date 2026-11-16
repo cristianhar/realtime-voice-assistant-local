@@ -553,6 +553,23 @@ body {
     font-weight: 400;
 }
 
+.mini-icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    opacity: 0.6;
+    transition: opacity 0.2s, transform 0.2s;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.mini-icon-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    background-color: rgba(239, 68, 68, 0.2);
+}
+
 .voice-buttons-bar {
     display: flex;
     align-items: center;
@@ -681,10 +698,57 @@ body {
     gap: 6px;
 }
 
-.coaching-content, .vocabulary-list {
+.coaching-content, .vocabulary-list, .notes-list {
     font-size: 0.85rem;
     color: var(--text-secondary);
     line-height: 1.5;
+    max-height: 170px;
+    overflow-y: auto;
+}
+
+.note-item {
+    background: rgba(16, 185, 129, 0.08);
+    border-left: 3px solid #10b981;
+    padding: 8px 10px;
+    border-radius: 4px;
+    color: #e2e8f0;
+    margin-bottom: 6px;
+    font-size: 0.82rem;
+    animation: fadeIn 0.3s;
+}
+
+.note-item strong {
+    color: #6ee7b7;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.tool-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.mini-icon-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    opacity: 0.7;
+    transition: opacity 0.2s, transform 0.2s;
+    padding: 2px 4px;
+}
+
+.mini-icon-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
 }
 
 .empty-tip {
