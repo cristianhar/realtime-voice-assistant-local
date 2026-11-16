@@ -117,3 +117,4 @@ const AudioVisualizer = {
 };
 
 window.AudioVisualizer = AudioVisualizer;
+

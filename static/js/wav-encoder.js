@@ -34,3 +34,4 @@ function encodeWAV(samples, sampleRate = 16000) {
 }
 
 window.encodeWAV = encodeWAV;
+

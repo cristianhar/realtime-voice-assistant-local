@@ -81,6 +81,8 @@ function getFormattedTime() {
     return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
+let reconnectAttempts = 0;
+
 function connectWebSocket() {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws/chat`;
@@ -88,6 +90,7 @@ function connectWebSocket() {
     socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
+        reconnectAttempts = 0;
         connectionStatus.className = "status-indicator connected";
         statusText.innerText = "Conectado (Local)";
         if (!isCallMode) setOrbState("idle", "Listo para conversar");
@@ -113,7 +116,9 @@ function connectWebSocket() {
         connectionStatus.className = "status-indicator";
         statusText.innerText = "Desconectado. Reintentando...";
         setOrbState("idle", "Reconectando...");
-        setTimeout(connectWebSocket, 2000);
+        const delay = Math.min(1000 * Math.pow(1.5, reconnectAttempts), 8000);
+        reconnectAttempts++;
+        setTimeout(connectWebSocket, delay);
     };
 
     socket.onerror = (err) => {

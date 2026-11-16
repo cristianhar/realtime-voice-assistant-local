@@ -48,6 +48,17 @@ async def lifespan(app: FastAPI):
     stt_model = load_stt_model()
     tts_model = load_tts_model()
     print(f"✓ Modelo LLM configurado: {MODEL_NAME}")
+
+    # Verificación de salud y conectividad de Ollama
+    try:
+        import urllib.request
+        req = urllib.request.Request(f"{OLLAMA_URL}/api/tags")
+        with urllib.request.urlopen(req, timeout=1.5) as resp:
+            if resp.status == 200:
+                print(f"✓ Ollama activo y respondiendo en {OLLAMA_URL}")
+    except Exception:
+        print(f"⚠️ AVISO: Ollama no respondió en {OLLAMA_URL}. Recuerda iniciar 'ollama serve' o 'ollama run {MODEL_NAME}'.")
+
     print("=" * 60)
     yield
 
@@ -248,10 +259,6 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                     stt_busy = False
 
                 if not user_text:
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": "No se distinguió tu voz con suficiente claridad."
-                    })
                     await websocket.send_json({"type": "status", "state": "idle"})
                     continue
 
@@ -346,7 +353,7 @@ async def websocket_chat_endpoint(websocket: WebSocket):
 
             # Inyectar memoria persistente ultraligera (RAG híbrido de notas, perfil y FTS5)
             memory_block = database.get_smart_memory_context(user_text)
-            current_system_prompt = PROMPTS[current_mode] + (f"\n{memory_block}" if memory_block else "")
+            current_system_prompt = get_system_prompt(current_mode, current_personality) + (f"\n{memory_block}" if memory_block else "")
 
             messages_for_llm = [{"role": "system", "content": current_system_prompt}] + [
                 m for m in conversation_history if m.get("role") != "system"
