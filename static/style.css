@@ -586,7 +586,7 @@ body {
     color: var(--text-secondary);
 }
 
-.mic-select, .voice-select, .vad-select, .personality-select {
+.mic-select, .voice-select, .vad-select, .personality-select, .speed-select {
     background-color: var(--bg-surface-elevated);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
@@ -599,7 +599,7 @@ body {
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.mic-select:focus, .voice-select:focus, .vad-select:focus, .personality-select:focus {
+.mic-select:focus, .voice-select:focus, .vad-select:focus, .personality-select:focus, .speed-select:focus {
     border-color: var(--accent-blue);
     box-shadow: 0 0 6px rgba(59, 130, 246, 0.3);
 }

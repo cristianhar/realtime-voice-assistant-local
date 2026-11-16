@@ -7,7 +7,7 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Llama_3.2_3B-black.svg)](https://ollama.com/)
 [![Kokoro ONNX](https://img.shields.io/badge/Kokoro--TTS-82M_ONNX-FF6F00.svg)](https://github.com/thewh1teagle/kokoro-onnx)
 [![PWA](https://img.shields.io/badge/PWA-Mobile_Ready-purple.svg)](https://web.dev/progressive-web-apps/)
-[![Tests Passing](https://img.shields.io/badge/Quality_Gate-35%2F35_Passing-brightgreen.svg)](tests/run_all_tests.py)
+[![Tests Passing](https://img.shields.io/badge/Quality_Gate-38%2F38_Passing-brightgreen.svg)](tests/run_all_tests.py)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Un asistente de voz full-duplex en tiempo real (similar a **ChatGPT Voice Mode**), diseñado para funcionar **100% local, privado, sin conexión a internet y optimizado para GPUs NVIDIA RTX de 6 GB VRAM** (como RTX 4050 / RTX 4060 Laptop o superiores).
@@ -81,13 +81,38 @@ flowchart LR
   * Atenuación de amplitud modulada al **52.6%** del RMS original.
   * Cadencia ralentizada con pausas suaves para un tono relajante y confidencial.
 
-### 5. 📱 Soporte Móvil First, HTTPS Seguro y PWA
+### 5. 🎵 Feedback Acústico Sintético (Earcons) & Control Dinámico de Velocidad
+* **Earcons Sintéticos con Web Audio API (`static/js/earcons.js`):**
+  * Generación de tonos matemáticos en tiempo real mediante `OscillatorNode` y `GainNode` con cero latencia de carga y 0 bytes transferidos.
+  * *Inicio de llamada:* Arpegio ascendente Do5 $\rightarrow$ Mi5 $\rightarrow$ Sol5 (523 Hz – 784 Hz).
+  * *Fin de llamada:* Arpegio descendente Sol5 $\rightarrow$ Mi5 $\rightarrow$ Do5 (784 Hz – 523 Hz).
+  * *Barge-in / Interrupción:* Clic suave de baja frecuencia (280 Hz $\rightarrow$ 140 Hz).
+  * *Éxito de herramienta (Tool Calling):* Doble ping armónico La5 $\rightarrow$ Do6 (880 Hz – 1046 Hz).
+* **Control de Velocidad del Habla (0.85x a 1.25x):**
+  * Selector visual en la barra de controles (`0.85x`, `1.0x`, `1.15x`, `1.25x`).
+  * Control por voz integrado: di *"habla más rápido"*, *"habla más despacio"*, o *"speak faster"* y el asistente ajusta su tasa de reproducción instantáneamente sin distorsión tonal.
+
+### 6. 💼 Personalidades Dinámicas & Modo "Mock Interviewer" (Técnico / IELTS)
+* **5 Personalidades Especializadas:**
+  * 🎓 *Language Coach:* Correcciones gramaticales y vocabulario guiado.
+  * 🤗 *Casual Friend:* Conversación empática, informal y cercana.
+  * 💻 *Senior Tech Lead:* Discusiones de arquitectura de software, patrones y buenas prácticas.
+  * 👔 *Executive Mentor:* Liderazgo, asertividad y toma de decisiones de alto impacto.
+  * 💼 *Tech & IELTS Interviewer:* Simulador de entrevistas técnicas de ingeniería de software (FAANG/Big Tech) y evaluador de fluidez para exámenes IELTS/TOEFL con feedback constructivo tras cada intervención.
+
+### 7. 🌐 Búsqueda Web en Tiempo Real Tri-Engine (100% Gratuita, Sin API Keys)
+* **Arquitectura de Búsqueda Híbrida (`tools.py`):**
+  * 🌦️ *Clima Local Instantáneo (wttr.in):* Respuesta en ~80 ms en texto plano.
+  * 📚 *Wikipedia REST API:* Definición enciclopédica y conceptos en ~120 ms.
+  * 🌐 *DuckDuckGo HTML Search:* Búsqueda web general en ~200 ms sin desafíos JS ni captchas.
+
+### 8. 📱 Soporte Móvil First, HTTPS Seguro y PWA
 * **Contexto Seguro HTTPS Automático:** Generación transparente de certificados SSL en `certs/` para que Chrome y Safari en Android/iOS permitan acceso al micrófono en red local (`https://192.168.x.x:8000`).
 * **Progressive Web App (PWA):** Incluye `manifest.json` y `sw.js` (Service Worker) para instalar como aplicación nativa a pantalla completa en tu teléfono.
 
-### 6. 🌐 Frontend Modular y Soporte Multiidioma (i18n)
+### 9. 🌐 Frontend Modular y Soporte Multiidioma (i18n)
 * **8 Idiomas Internacionales:** Español (🇪🇸), Inglés (🇺🇸), Portugués (🇧🇷), Francés (🇫🇷), Alemán (🇩🇪), Italiano (🇮🇹), Japonés (🇯🇵) y Chino Simplificado (🇨🇳).
-* **Cero Parpadeo:** Diccionarios sincrónicos embebidos con carga progresiva de `locales.json`.
+* **Arquitectura Frontend Desacoplada (`static/js/`):** Módulos independientes para audio player, grabador con VAD, UI de chat, cajón de notas, telemetría de GPU y sintetizador de earcons.
 * **Exportación de Sesiones:** Descarga el historial conversacional completo en formato Markdown (📥).
 
 ---
@@ -244,10 +269,19 @@ python tests/benchmark_full_calibration_suite.py
 │   ├── app.js                # Orquestador del cliente (AudioContext, WebSocket, VAD)
 │   ├── sw.js                 # Service Worker para capacidades offline y PWA
 │   ├── manifest.json         # Manifiesto PWA para instalación móvil nativa
+│   ├── locales.json          # Diccionarios de 8 idiomas internacionales
 │   └── js/
-│       └── i18n.js           # Gestor multiidioma sincrónico con fallbacks
+│       ├── i18n.js           # Gestor multiidioma sincrónico con fallbacks
+│       ├── earcons.js        # Sintetizador Web Audio API de chimes y feedback acústico
+│       ├── audio-player.js   # Reproductor de audio con cola gapless y rate control
+│       ├── audio-recorder.js # Grabación 16kHz PCM con VAD y RMS adaptativo
+│       ├── chat-ui.js        # Renderizado de burbujas, orbe 60 FPS y badges de tools
+│       ├── notes-drawer.js   # Drawer lateral de gestión y síntesis de notas
+│       ├── telemetry.js      # Polling de telemetría de hardware y GPU NVIDIA
+│       ├── visualizer.js     # Renderizador de osciloscopio en tiempo real
+│       └── wav-encoder.js    # Codificador cliente PCM a WAV 16kHz
 ├── tests/
-│   ├── run_all_tests.py      # Quality Gate principal (35 tests automatizados)
+│   ├── run_all_tests.py      # Quality Gate principal (38 tests automatizados)
 │   ├── benchmark_full_calibration_suite.py  # Benchmark E2E en vivo con telemetría WSS
 │   ├── test_e2e_pipeline.py  # Pruebas integrales de ciclo de vida completo
 │   ├── test_tools_memory.py  # Pruebas de herramientas y persistencia

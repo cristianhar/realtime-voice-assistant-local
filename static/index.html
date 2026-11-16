@@ -151,6 +151,16 @@
                                 <option value="friendly">🤗 Amigo Casual</option>
                                 <option value="tech">💻 Senior Tech Lead</option>
                                 <option value="executive">👔 Mentor Ejecutivo</option>
+                                <option value="interviewer">💼 Entrevistador Técnico / IELTS</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label id="label-speed" for="speed-select" title="Velocidad del habla de la IA">⏩ Velocidad:</label>
+                            <select id="speed-select" class="speed-select" title="Velocidad de reproducción de audio">
+                                <option value="0.85">0.85x (Pausado)</option>
+                                <option value="1.0" selected>1.0x (Normal)</option>
+                                <option value="1.15">1.15x (Fluido)</option>
+                                <option value="1.25">1.25x (Rápido)</option>
                             </select>
                         </div>
                         <div class="setting-item">
@@ -298,6 +308,7 @@
     </aside>
 
     <script src="/static/js/i18n.js"></script>
+    <script src="/static/js/earcons.js"></script>
     <script src="/static/js/wav-encoder.js"></script>
     <script src="/static/js/visualizer.js"></script>
     <script src="/static/js/audio-player.js"></script>

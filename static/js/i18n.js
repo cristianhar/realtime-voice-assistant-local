@@ -25,6 +25,7 @@ const DEFAULT_FALLBACK_LOCALES = {
         "label_voice": "🗣️ Voz IA:",
         "label_vad": "🎚️ Filtro VAD:",
         "label_personality": "🎭 Personalidad:",
+        "label_speed": "⏩ Velocidad:",
         "label_whisper": "🌙 Susurro:",
         "whisper_off": "Desactivado",
         "whisper_on": "Activado",
@@ -32,6 +33,7 @@ const DEFAULT_FALLBACK_LOCALES = {
         "pers_friendly": "🤗 Amigo Casual",
         "pers_tech": "💻 Senior Tech Lead",
         "pers_executive": "👔 Mentor Ejecutivo",
+        "pers_interviewer": "💼 Entrevistador Técnico & IELTS",
         "vad_low": "Baja (Filtra respiración fuerte y ventilador)",
         "vad_med": "Media (Recomendada)",
         "vad_high": "Alta (Habla muy suave)",
@@ -80,6 +82,7 @@ const DEFAULT_FALLBACK_LOCALES = {
         "label_voice": "🗣️ AI Voice:",
         "label_vad": "🎚️ VAD Sensitivity:",
         "label_personality": "🎭 Personality:",
+        "label_speed": "⏩ Speed:",
         "label_whisper": "🌙 Whisper:",
         "whisper_off": "Off",
         "whisper_on": "Active",
@@ -87,6 +90,7 @@ const DEFAULT_FALLBACK_LOCALES = {
         "pers_friendly": "🤗 Casual Friend",
         "pers_tech": "💻 Senior Tech Lead",
         "pers_executive": "👔 Executive Mentor",
+        "pers_interviewer": "💼 Tech & IELTS Interviewer",
         "vad_low": "Low (Filters strong breaths and fan)",
         "vad_med": "Medium (Recommended)",
         "vad_high": "High (Detects soft whisper)",
@@ -215,12 +219,14 @@ const I18nManager = {
         const lVoice = document.getElementById("label-voice");
         const lVad = document.getElementById("label-vad");
         const lPers = document.getElementById("label-personality");
+        const lSpeed = document.getElementById("label-speed");
         const lWhisper = document.getElementById("label-whisper");
         const whisperBtnLabel = document.getElementById("whisper-btn-label");
         if (lMic) lMic.innerText = t.label_mic;
         if (lVoice) lVoice.innerText = t.label_voice;
         if (lVad) lVad.innerText = t.label_vad;
         if (lPers && t.label_personality) lPers.innerText = t.label_personality;
+        if (lSpeed && t.label_speed) lSpeed.innerText = t.label_speed;
         if (lWhisper && t.label_whisper) lWhisper.innerText = t.label_whisper;
         if (whisperBtnLabel) {
             whisperBtnLabel.innerText = window.isWhisperMode ? (t.whisper_on || "Activado") : (t.whisper_off || "Desactivado");
@@ -232,10 +238,12 @@ const I18nManager = {
             const optFriend = personalitySelect.querySelector('option[value="friendly"]');
             const optTech = personalitySelect.querySelector('option[value="tech"]');
             const optExec = personalitySelect.querySelector('option[value="executive"]');
+            const optInterviewer = personalitySelect.querySelector('option[value="interviewer"]');
             if (optCoach) optCoach.innerText = t.pers_coach;
             if (optFriend) optFriend.innerText = t.pers_friendly;
             if (optTech) optTech.innerText = t.pers_tech;
             if (optExec) optExec.innerText = t.pers_executive;
+            if (optInterviewer && t.pers_interviewer) optInterviewer.innerText = t.pers_interviewer;
         }
 
         const optLow = document.getElementById("opt-vad-low");

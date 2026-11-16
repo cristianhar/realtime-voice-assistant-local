@@ -7,10 +7,21 @@ class AudioPlayerManager {
         this.audioQueue = [];
         this.currentAudioElement = null;
         this.isAudioPlaying = false;
+        this.playbackSpeed = options.playbackSpeed || 1.0;
 
         this.onPlayStart = options.onPlayStart || (() => {});
         this.onPlayEnd = options.onPlayEnd || (() => {});
         this.onInterrupt = options.onInterrupt || (() => {});
+    }
+
+    setPlaybackSpeed(speed) {
+        const val = parseFloat(speed);
+        if (!isNaN(val) && val >= 0.5 && val <= 2.5) {
+            this.playbackSpeed = val;
+            if (this.currentAudioElement) {
+                this.currentAudioElement.playbackRate = val;
+            }
+        }
     }
 
     enqueueAudio(base64Wav) {
@@ -38,6 +49,7 @@ class AudioPlayerManager {
         this.onPlayStart();
 
         this.currentAudioElement = this.audioQueue.shift();
+        this.currentAudioElement.playbackRate = this.playbackSpeed;
 
         this.currentAudioElement.onended = () => {
             this.playNextChunk();

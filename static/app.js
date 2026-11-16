@@ -30,6 +30,7 @@ const micSelect = document.getElementById("mic-select");
 const voiceSelect = document.getElementById("voice-select");
 const vadSelect = document.getElementById("vad-select");
 const personalitySelect = document.getElementById("personality-select");
+const speedSelect = document.getElementById("speed-select");
 const whisperBtn = document.getElementById("whisper-btn");
 const whisperBtnLabel = document.getElementById("whisper-btn-label");
 const micMeterContainer = document.getElementById("mic-meter-container");
@@ -43,6 +44,7 @@ const metricTotal = document.getElementById("metric-total");
 const chatUI = new ChatUIManager();
 const notesDrawer = new NotesDrawerManager();
 const gpuTelemetry = new GpuTelemetryManager();
+const earcons = new EarconManager();
 
 const audioPlayer = new AudioPlayerManager({
     onPlayStart: () => {
@@ -72,6 +74,7 @@ const audioRecorder = new AudioRecorderManager({
         if (audioPlayer.isAudioPlaying) {
             audioPlayer.interrupt();
             sendWsMessage({ type: "interrupt" });
+            earcons.playBargeIn();
         }
     },
     onSilenceDetected: (samples) => {
@@ -181,9 +184,14 @@ function handleServerMessage(data) {
             break;
 
         case "tool_executed":
+            earcons.playToolSuccess();
             chatUI.handleToolExecuted(data);
             if (data.tool === "save_voice_note") {
                 notesDrawer.fetchNotes();
+            } else if (data.tool === "set_speech_speed" && data.data && data.data.speed) {
+                const newSpeed = parseFloat(data.data.speed);
+                audioPlayer.setPlaybackSpeed(newSpeed);
+                if (speedSelect) speedSelect.value = newSpeed.toString();
             }
             break;
 
@@ -323,6 +331,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    if (speedSelect) {
+        speedSelect.addEventListener("change", () => {
+            const val = parseFloat(speedSelect.value);
+            audioPlayer.setPlaybackSpeed(val);
+        });
+    }
+
     if (whisperBtn) {
         whisperBtn.addEventListener("click", () => {
             const nextState = !isWhisperMode;
@@ -371,6 +386,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         interruptBtn.addEventListener("click", () => {
             audioPlayer.interrupt();
             sendWsMessage({ type: "interrupt" });
+            earcons.playBargeIn();
         });
     }
 
@@ -384,11 +400,13 @@ window.addEventListener("DOMContentLoaded", async () => {
                     isCallMode = false;
                     return;
                 }
+                earcons.playCallStart();
                 callModeBtn.classList.add("active");
                 if (callBtnText) callBtnText.innerText = "Finalizar Llamada";
                 if (micMeterContainer) micMeterContainer.classList.remove("hidden");
                 chatUI.setOrbState("listening", "📞 Llamada activa: habla cuando quieras");
             } else {
+                earcons.playCallEnd();
                 callModeBtn.classList.remove("active");
                 if (callBtnText) callBtnText.innerText = "Iniciar Modo Llamada";
                 if (micMeterContainer) micMeterContainer.classList.add("hidden");

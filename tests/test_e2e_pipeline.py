@@ -160,9 +160,11 @@ class TestEndToEndPipeline(unittest.TestCase):
             self.assertIn(lang, locales_data, f"Idioma {lang} debe estar en locales.json")
             self.assertIn("welcome_title", locales_data[lang])
             self.assertIn("label_personality", locales_data[lang])
+            self.assertIn("pers_interviewer", locales_data[lang])
+            self.assertIn("label_speed", locales_data[lang])
 
         js_files = [
-            "i18n.js", "visualizer.js", "wav-encoder.js",
+            "i18n.js", "earcons.js", "visualizer.js", "wav-encoder.js",
             "audio-player.js", "audio-recorder.js", "chat-ui.js",
             "notes-drawer.js", "telemetry.js"
         ]

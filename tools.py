@@ -472,5 +472,66 @@ def detect_and_execute_tool(text: str, lang_mode: str = "es") -> Optional[Dict[s
             "data": {"query": search_query, "type": res_type, "details": details}
         }
 
+    # 8. TOOL: Control Dinámico de Velocidad del Habla (Speed Control)
+    speed_patterns_faster_es = [
+        r'\b(?:habla|hablar)\s+(?:un\s+poco\s+)?m[aá]s\s+(?:r[aá]pido|veloz|aprisa)\b',
+        r'\b(?:aumenta|sube)\s+(?:la\s+)?velocidad\b'
+    ]
+    speed_patterns_slower_es = [
+        r'\b(?:habla|hablar)\s+(?:un\s+poco\s+)?m[aá]s\s+(?:despacio|lento|pausado)\b',
+        r'\b(?:disminuye|baja)\s+(?:la\s+)?velocidad\b'
+    ]
+    speed_patterns_normal_es = [
+        r'\b(?:habla|velocidad)\s+(?:a\s+ritmo\s+)?(?:normal|est[aá]ndar)\b',
+        r'\bvelocidad\s+por\s+defecto\b'
+    ]
+
+    speed_patterns_faster_en = [
+        r'\b(?:speak|talk)\s+(?:a\s+bit\s+)?(?:faster|quicker|speed\s+up)\b',
+        r'\bincrease\s+(?:the\s+)?speed\b'
+    ]
+    speed_patterns_slower_en = [
+        r'\b(?:speak|talk)\s+(?:a\s+bit\s+)?(?:slower|slow\s+down)\b',
+        r'\bdecrease\s+(?:the\s+)?speed\b'
+    ]
+    speed_patterns_normal_en = [
+        r'\b(?:speak|talk|speed)\s+(?:at\s+)?(?:normal|regular|standard)\s*(?:speed|pace)?\b',
+        r'\breset\s+speed\b'
+    ]
+
+    is_speed_faster_es = any(re.search(p, clean_no_punct) for p in speed_patterns_faster_es)
+    is_speed_slower_es = any(re.search(p, clean_no_punct) for p in speed_patterns_slower_es)
+    is_speed_normal_es = any(re.search(p, clean_no_punct) for p in speed_patterns_normal_es)
+
+    is_speed_faster_en = any(re.search(p, clean_no_punct) for p in speed_patterns_faster_en)
+    is_speed_slower_en = any(re.search(p, clean_no_punct) for p in speed_patterns_slower_en)
+    is_speed_normal_en = any(re.search(p, clean_no_punct) for p in speed_patterns_normal_en)
+
+    if is_speed_faster_es or is_speed_slower_es or is_speed_normal_es or is_speed_faster_en or is_speed_slower_en or is_speed_normal_en:
+        is_spanish = (is_speed_faster_es or is_speed_slower_es or is_speed_normal_es) or (lang_mode == "es")
+        if is_speed_faster_es or is_speed_faster_en:
+            speed_val = 1.25
+            action = "faster"
+            spoken = "Entendido, aumenté mi velocidad de habla a uno punto veinticinco." if is_spanish else "Understood, I increased my speech rate to 1.25x."
+            display = "⏩ Velocidad de voz: 1.25x (Rápido)" if is_spanish else "⏩ Speech speed: 1.25x (Fast)"
+        elif is_speed_slower_es or is_speed_slower_en:
+            speed_val = 0.85
+            action = "slower"
+            spoken = "Claro, hablaré más pausado y despacio para ti." if is_spanish else "Sure, I will speak more slowly and clearly for you."
+            display = "⏩ Velocidad de voz: 0.85x (Pausado)" if is_spanish else "⏩ Speech speed: 0.85x (Slow)"
+        else:
+            speed_val = 1.0
+            action = "normal"
+            spoken = "Restablecí mi velocidad de habla a la velocidad estándar normal." if is_spanish else "I reset my speech rate to normal standard pace."
+            display = "⏩ Velocidad de voz: 1.0x (Normal)" if is_spanish else "⏩ Speech speed: 1.0x (Normal)"
+
+        return {
+            "tool": "set_speech_speed",
+            "spoken_response": spoken,
+            "display_response": display,
+            "lang": "es" if is_spanish else "en",
+            "data": {"speed": speed_val, "action": action}
+        }
+
     return None
 

@@ -137,6 +137,7 @@ class TestToolsAndMemory(unittest.TestCase):
 
     def test_personalities_prompt_generation(self):
         from core.config import get_system_prompt, PERSONALITIES
+        self.assertIn("interviewer", PERSONALITIES)
         for p_key in PERSONALITIES.keys():
             prompt_es = get_system_prompt("es", personality=p_key)
             prompt_en = get_system_prompt("en", personality=p_key)
@@ -144,6 +145,37 @@ class TestToolsAndMemory(unittest.TestCase):
             self.assertIsInstance(prompt_en, str)
             self.assertTrue(len(prompt_es) > 50)
             self.assertTrue(len(prompt_en) > 50)
+
+    def test_speed_control_tool_es(self):
+        # 1. Más rápido
+        res = tools.detect_and_execute_tool("habla un poco más rápido por favor", lang_mode="es")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["tool"], "set_speech_speed")
+        self.assertEqual(res["lang"], "es")
+        self.assertEqual(res["data"]["speed"], 1.25)
+        self.assertIn("uno punto veinticinco", res["spoken_response"])
+        self.assertIn("1.25x", res["display_response"])
+
+        # 2. Más despacio
+        res_slow = tools.detect_and_execute_tool("habla más despacio", lang_mode="es")
+        self.assertIsNotNone(res_slow)
+        self.assertEqual(res_slow["data"]["speed"], 0.85)
+
+        # 3. Velocidad normal
+        res_norm = tools.detect_and_execute_tool("habla a ritmo normal", lang_mode="es")
+        self.assertIsNotNone(res_norm)
+        self.assertEqual(res_norm["data"]["speed"], 1.0)
+
+    def test_speed_control_tool_en(self):
+        res = tools.detect_and_execute_tool("please speak faster", lang_mode="en")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["tool"], "set_speech_speed")
+        self.assertEqual(res["lang"], "en")
+        self.assertEqual(res["data"]["speed"], 1.25)
+
+        res_slow = tools.detect_and_execute_tool("talk slower please", lang_mode="en")
+        self.assertIsNotNone(res_slow)
+        self.assertEqual(res_slow["data"]["speed"], 0.85)
 
     def test_search_web_tool(self):
         from unittest.mock import patch
