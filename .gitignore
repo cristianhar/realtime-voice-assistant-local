@@ -32,6 +32,9 @@ models/*.json
 Thumbs.db
 .DS_Store
 
-# Logs
+# Logs & Databases
 *.log
+*.db
+*.sqlite
+*.sqlite3
 
