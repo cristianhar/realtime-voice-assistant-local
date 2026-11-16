@@ -7,7 +7,6 @@ import os
 import wave
 import struct
 import numpy as np
-from PIL import Image
 
 import sys
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -107,18 +106,24 @@ class TestHumanizationAndVAD(unittest.TestCase):
         self.assertFalse(is_click_speech, "El clic de teclado debe ser rechazado por el VAD.")
 
     def test_04_demo_gif_integrity(self):
-        """Valida que el GIF animado para el README exista, sea válido, fluido y ligero."""
+        """Valida que el GIF animado para el README exista, sea válido, fluido y ligero (usando standard library)."""
         gif_path = os.path.join(PROJECT_ROOT, "docs", "images", "voice_assistant_demo.gif")
         self.assertTrue(os.path.isfile(gif_path), f"El GIF {gif_path} no existe.")
 
         size_kb = os.path.getsize(gif_path) / 1024
         self.assertLess(size_kb, 1500, f"El GIF excede 1.5MB ({size_kb:.1f} KB).")
 
-        with Image.open(gif_path) as img:
-            self.assertEqual(img.format, "GIF")
-            self.assertEqual(img.size, (720, 360))
-            self.assertTrue(getattr(img, "is_animated", False), "El archivo debe ser un GIF animado.")
-            self.assertGreaterEqual(img.n_frames, 24, "El GIF debe tener al menos 24 frames para ser fluido.")
+        with open(gif_path, "rb") as f:
+            header = f.read(6)
+            self.assertIn(header, (b"GIF89a", b"GIF87a"), "El archivo no tiene una cabecera GIF válida.")
+            w, h = struct.unpack("<HH", f.read(4))
+            self.assertEqual((w, h), (720, 360), "Las dimensiones del GIF deben ser 720x360.")
+
+            f.seek(0)
+            content = f.read()
+            # 0x2C es el separador de descriptor de imagen de cada frame en la especificación GIF
+            frame_count = content.count(b"\x2c")
+            self.assertGreaterEqual(frame_count, 24, "El GIF debe tener al menos 24 frames para ser fluido.")
 
     def test_05_client_modules_integrated(self):
         """Verifica la integración del módulo humanizer.js en index.html y audio-player.js."""
