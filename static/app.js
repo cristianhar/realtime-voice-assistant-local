@@ -277,6 +277,46 @@ function showSystemNotification(msg) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+function showSecureContextModal(httpsUrl) {
+    if (document.getElementById("secure-context-alert")) {
+        const el = document.getElementById("secure-context-alert");
+        el.scrollIntoView({ behavior: "smooth" });
+        return;
+    }
+
+    const card = document.createElement("div");
+    card.id = "secure-context-alert";
+    card.className = "secure-context-card";
+    card.innerHTML = `
+        <div class="secure-context-header">
+            <span class="secure-icon" style="font-size: 1.4rem;">🔒</span>
+            <strong>Micrófono bloqueado por Chrome en tu Celular</strong>
+        </div>
+        <p class="secure-context-desc">
+            Por política de seguridad de Google y Apple, los celulares <b>bloquean el micrófono en páginas HTTP por red local</b>. Para hablar con tu voz debes entrar por <b>HTTPS</b>:
+        </p>
+        <div class="secure-context-actions">
+            <a href="${httpsUrl}" class="secure-btn-primary">
+                🚀 Entrar con HTTPS (${httpsUrl})
+            </a>
+        </div>
+        <div class="secure-context-help">
+            <strong>📋 Pasos para entrar (Solo toma 5 segundos):</strong><br>
+            1. Toca el botón azul de arriba.<br>
+            2. En Chrome te saldrá <i>"La conexión no es privada"</i>.<br>
+            3. Toca en <b>"Configuración avanzada"</b> (abajo) y luego en <b>"Acceder a ${window.location.hostname} (no seguro)"</b>.<br>
+            4. ¡Listo! El micrófono se activará de inmediato.
+        </div>
+        <div class="secure-context-alt">
+            💡 <b>Alternativa sin HTTPS (Chrome Android):</b><br>
+            Abre una pestaña con <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code>, pega <code>${window.location.origin}</code>, marca <i>Enabled</i> y reinicia Chrome.
+        </div>
+    `;
+
+    chatMessages.appendChild(card);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
 // ==========================================
 // RENDERIZADO EN VIVO DE TRANSCRIPCIÓN
 // ==========================================
@@ -570,6 +610,21 @@ async function populateMicrophones() {
 
 async function setupAudioStream() {
     if (mediaStream && audioContext) return true;
+
+    // 1. Verificación de Secure Context para dispositivos móviles (iOS Safari / Android Chrome)
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        const currentProto = window.location.protocol;
+
+        if (currentProto === "http:" && !isLocal) {
+            const httpsUrl = `https://${window.location.hostname}:8000`;
+            showSecureContextModal(httpsUrl);
+            return false;
+        }
+
+        showSystemNotification("Tu navegador no soporta o bloquea la captura de audio en esta conexión.");
+        return false;
+    }
 
     try {
         const selectedDeviceId = micSelect ? micSelect.value : "";

@@ -20,7 +20,7 @@ class TestToolsAndMemory(unittest.TestCase):
         res = tools.detect_and_execute_tool("¿Qué hora es?", lang_mode="es")
         self.assertIsNotNone(res)
         self.assertEqual(res["tool"], "get_current_time")
-        self.assertIn("Son las", res["spoken_response"])
+        self.assertTrue(any(w in res["spoken_response"] for w in ["Son las", "Es la una", "la una", "Son"]))
         self.assertEqual(res["lang"], "es")
 
     def test_time_tool_en(self):

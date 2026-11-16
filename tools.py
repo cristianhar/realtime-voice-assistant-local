@@ -22,6 +22,7 @@ def _format_time_es(dt: datetime) -> str:
     if h12 == 0:
         h12 = 12
         
+    prefix = "Es" if h12 == 1 else "Son"
     if minute == 0:
         time_str = f"las {h12} en punto" if h12 != 1 else "la una en punto"
     elif minute == 15:
@@ -31,7 +32,7 @@ def _format_time_es(dt: datetime) -> str:
     else:
         time_str = f"las {h12} y {minute}" if h12 != 1 else f"la una y {minute}"
         
-    return f"Son {time_str} {period}, del {day_name} {day_num} de {month_name}."
+    return f"{prefix} {time_str} {period}, del {day_name} {day_num} de {month_name}."
 
 def _format_time_en(dt: datetime) -> str:
     return dt.strftime("It is %I:%M %p on %A, %B %d.")

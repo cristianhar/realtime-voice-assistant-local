@@ -70,7 +70,7 @@ class TestEndToEndPipeline(unittest.TestCase):
         self.assertIsNotNone(time_res)
         self.assertEqual(time_res["tool"], "get_current_time")
         self.assertEqual(time_res["lang"], "es")
-        self.assertIn("Son las", time_res["spoken_response"])
+        self.assertTrue(any(w in time_res["spoken_response"] for w in ["Son las", "Es la una", "la una", "Son"]))
 
         # 2. Guardar nota de voz
         note_res = tools.detect_and_execute_tool("Toma nota de comprar café descafeinado", lang_mode="es")
