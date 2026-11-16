@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice English AI Tutor | 100% Local</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Barra Superior -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="app-logo">
+                    <span class="logo-icon">🎙️</span>
+                    <span class="logo-text">VoiceChat <span class="badge">Local AI</span></span>
+                </div>
+            </div>
+            <div class="header-center">
+                <!-- Selector de Idioma / Modo -->
+                <div class="lang-selector-group">
+                    <button class="lang-btn active" data-mode="en" title="Tutor de conversación en inglés">🇺🇸 Practicar Inglés</button>
+                    <button class="lang-btn" data-mode="es" title="Asistente nativo en español">🇪🇸 Español</button>
+                    <button class="lang-btn" data-mode="auto" title="Detección automática bilingüe">🌐 Bilingüe / Auto</button>
+                </div>
+                <div id="connection-status" class="status-indicator">
+                    <span class="dot"></span> <span id="status-text">Conectando...</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <span class="hardware-badge">RTX CUDA · Whisper Multilingual · Kokoro</span>
+            </div>
+        </header>
+
+        <!-- Contenido Principal: Dos Columnas -->
+        <main class="main-content">
+            <!-- Columna Izquierda: Orb y Feed de Conversación -->
+            <section class="chat-section">
+                <!-- Orb de Voz Interactivo (Estilo ChatGPT) -->
+                <div class="orb-container">
+                    <div id="voice-orb" class="voice-orb idle">
+                        <div class="orb-core"></div>
+                        <div class="orb-ring ring-1"></div>
+                        <div class="orb-ring ring-2"></div>
+                        <div class="orb-ring ring-3"></div>
+                    </div>
+                    <div id="orb-label" class="orb-label">Listo para practicar</div>
+                </div>
+
+                <!-- Historial de Conversación con Doble Transcripción -->
+                <div id="chat-messages" class="chat-messages">
+                    <div class="welcome-card">
+                        <h3>👋 Welcome to your English Practice Room!</h3>
+                        <p>Speak in English naturally. You will see both what you say and what the AI answers, along with Spanish translations and grammar feedback.</p>
+                        <div class="tips-row">
+                            <span>💡 Sin límites de tiempo</span>
+                            <span>⚡ 100% Local y privado</span>
+                            <span>🎯 Corrección en tiempo real</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Barra de Entrada y Controles -->
+                <div class="controls-area">
+                    <div class="text-input-bar">
+                        <input type="text" id="text-input" placeholder="O escribe en inglés si prefieres..." autocomplete="off">
+                        <button id="send-btn" class="icon-btn" title="Enviar texto">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Modo Llamada Manos Libres y Botones -->
+                    <div class="call-mode-bar">
+                        <button id="call-mode-btn" class="call-mode-button" title="Activa la conversación fluida sin tocar ningún botón">
+                            <span class="call-icon">📞</span>
+                            <span id="call-btn-text">Iniciar Modo Llamada (Manos Libres)</span>
+                        </button>
+                    </div>
+
+                    <!-- Selector de Micrófono, Voz de IA y Sensibilidad -->
+                    <div class="audio-settings-bar">
+                        <div class="setting-item">
+                            <label for="mic-select">🎤 Mic:</label>
+                            <select id="mic-select" class="mic-select">
+                                <option value="">Cargando micrófonos...</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="voice-select">🗣️ Voz IA:</label>
+                            <select id="voice-select" class="voice-select">
+                                <optgroup label="🇪🇸 Español Nativo">
+                                    <option value="ef_dora" data-lang="es">🇪🇸 Dora (Femenina - Cálida)</option>
+                                    <option value="em_alex" data-lang="es">🇪🇸 Alex (Masculino - Claro)</option>
+                                </optgroup>
+                                <optgroup label="🇺🇸 English">
+                                    <option value="af_sarah" data-lang="en">🇺🇸 Sarah (Female - Friendly)</option>
+                                    <option value="am_adam" data-lang="en">🇺🇸 Adam (Male - Deep)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="vad-select" title="Filtra respiraciones y ruidos de fondo">🎚️ Filtro VAD:</label>
+                            <select id="vad-select" class="vad-select" title="Sensibilidad del micrófono">
+                                <option value="0.045">Baja (Filtra respiración fuerte y ventilador)</option>
+                                <option value="0.030" selected>Media (Recomendada)</option>
+                                <option value="0.018">Alta (Habla muy suave)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="voice-buttons-bar">
+                        <button id="mic-btn" class="mic-button" title="Haz clic para hablar o mantén presionado">
+                            <svg class="mic-icon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                            </svg>
+                            <span id="mic-btn-label">Pulsar para hablar</span>
+                        </button>
+
+                        <button id="interrupt-btn" class="interrupt-button hidden" title="Interrumpir a la IA">
+                            ⏹ Interrumpir
+                        </button>
+                    </div>
+
+                    <!-- Indicador visual de volumen de micrófono en tiempo real -->
+                    <div id="mic-meter-container" class="mic-meter-container hidden">
+                        <span class="meter-label">Nivel de voz:</span>
+                        <div class="meter-bar-bg" title="Tu voz debe pasar la línea roja para activarse (filtra respiraciones)">
+                            <div id="meter-bar-fill" class="meter-bar-fill"></div>
+                            <div id="meter-threshold-line" class="meter-threshold-line"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Columna Derecha: Tarjeta de Coaching y Métricas -->
+            <aside class="sidebar-section">
+                <!-- Panel de Tips Gramaticales -->
+                <div class="panel-card coaching-card">
+                    <div class="panel-header">
+                        <h4>🎯 Tutor Feedback & Grammar</h4>
+                    </div>
+                    <div id="coaching-content" class="coaching-content">
+                        <div class="empty-tip">
+                            Habla en inglés para recibir observaciones gramaticales y sugerencias de vocabulario en tiempo real.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vocabulario Aprendido / Frases clave -->
+                <div class="panel-card vocabulary-card">
+                    <div class="panel-header">
+                        <h4>📝 Historial de Frases</h4>
+                    </div>
+                    <div id="vocabulary-list" class="vocabulary-list">
+                        <div class="empty-tip">Aquí se guardarán las oraciones clave de la sesión.</div>
+                    </div>
+                </div>
+
+                <!-- Métricas de Latencia en Vivo -->
+                <div class="panel-card metrics-card">
+                    <div class="panel-header">
+                        <h4>⚡ Rendimiento en Tiempo Real</h4>
+                    </div>
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <span class="metric-label">Hora último mensaje:</span>
+                            <span id="metric-time" class="metric-value">--:--:--</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Whisper STT (Voz):</span>
+                            <span id="metric-stt" class="metric-value">-- ms</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Latencia 1er Audio (TTFA):</span>
+                            <span id="metric-tts" class="metric-value">-- ms</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Tiempo Total Respuesta:</span>
+                            <span id="metric-total" class="metric-value">-- s</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">VRAM Utilizada:</span>
+                            <span class="metric-value">~2.1 GB / 6 GB</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
+
