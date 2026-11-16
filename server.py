@@ -31,6 +31,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from faster_whisper import WhisperModel
 from kokoro_onnx import Kokoro
 import onnxruntime as ort
+import database
+import tools
 
 OLLAMA_URL = "http://127.0.0.1:11434"
 MODEL_NAME = "llama3.2:3b"
@@ -95,6 +97,7 @@ def init_models():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    database.init_db()
     init_models()
     yield
 
@@ -240,6 +243,37 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def get_index():
     return FileResponse("static/index.html")
 
+@app.get("/api/history")
+async def api_get_history():
+    """Retorna mensajes recientes almacenados en SQLite."""
+    return database.get_recent_messages(limit=30)
+
+@app.get("/api/vocabulary")
+async def api_get_vocabulary():
+    """Retorna vocabulario y correcciones pedagógicas guardadas."""
+    return database.get_vocabulary_list(limit=30)
+
+@app.delete("/api/history")
+async def api_clear_history():
+    """Borra el historial y notas almacenadas en SQLite."""
+    database.clear_all_history()
+    return {"status": "ok", "message": "Historial limpiado exitosamente"}
+
+@app.get("/api/notes")
+async def api_get_notes():
+    """Retorna notas de voz guardadas."""
+    return database.get_recent_notes(limit=20)
+
+@app.post("/api/notes")
+async def api_save_note(note_data: dict):
+    """Guarda una nota de voz."""
+    content = note_data.get("content", "")
+    title = note_data.get("title")
+    if not content.strip():
+        return {"status": "error", "message": "Contenido vacío"}
+    note_id = database.save_voice_note(content, title)
+    return {"status": "ok", "note_id": note_id}
+
 @app.websocket("/ws/chat")
 async def websocket_chat_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -248,6 +282,8 @@ async def websocket_chat_endpoint(websocket: WebSocket):
     current_mode = "en"
     current_spanish_voice = "ef_dora"
     current_english_voice = "af_sarah"
+    session_id = f"sess-{int(time.time())}"
+    database.create_or_get_session(session_id, current_mode, current_english_voice)
     conversation_history: List[Dict[str, str]] = [
         {"role": "system", "content": PROMPTS[current_mode]}
     ]
@@ -371,21 +407,91 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                 "lang": detected_lang
             })
 
-            # Turno de la IA (Prioridad Absoluta de GPU)
+            # Persistir mensaje del usuario en SQLite
+            database.save_message(
+                session_id=session_id,
+                role="user",
+                content=user_text,
+                turn_id=turn_id,
+                stt_ms=stt_latency
+            )
+
+            current_generation_id += 1
+            gen_id = current_generation_id
+            is_interrupted = False
+            loop = asyncio.get_running_loop()
+
+            # 2. TOOL CALLING DIRECTO (Zero-Latency Local Tools: Hora, Notas, Vocabulario)
+            tool_result = tools.detect_and_execute_tool(user_text, current_mode)
+            if tool_result:
+                spoken_text = tool_result["spoken_response"]
+                display_text = tool_result["display_response"]
+                tool_name = tool_result["tool"]
+                tool_lang = tool_result["lang"]
+                print(f"🔧 Tool ejecutada: {tool_name} -> \"{spoken_text}\"")
+
+                # Notificar ejecución de herramienta al frontend
+                await websocket.send_json({
+                    "type": "tool_executed",
+                    "turn_id": turn_id,
+                    "tool": tool_name,
+                    "display_text": display_text,
+                    "data": tool_result.get("data", {})
+                })
+
+                await websocket.send_json({"type": "status", "state": "speaking"})
+
+                # Síntesis TTS directa ultra-rápida (TTFA ~200ms sin espera de LLM)
+                tool_voice = current_spanish_voice if tool_lang == "es" else current_english_voice
+                audio_b64 = await loop.run_in_executor(
+                    thread_pool, synthesize_audio_wav_base64, spoken_text, tool_voice, tool_lang
+                )
+
+                if audio_b64 and not is_interrupted and gen_id == current_generation_id:
+                    await websocket.send_json({
+                        "type": "audio_chunk",
+                        "turn_id": turn_id,
+                        "audio": audio_b64,
+                        "text": spoken_text
+                    })
+
+                await websocket.send_json({
+                    "type": "ai_done",
+                    "turn_id": turn_id,
+                    "full_text": display_text
+                })
+
+                # Persistir respuesta del asistente en SQLite
+                database.save_message(
+                    session_id=session_id,
+                    role="assistant",
+                    content=display_text,
+                    turn_id=turn_id
+                )
+                conversation_history.append({"role": "user", "content": user_text})
+                conversation_history.append({"role": "assistant", "content": spoken_text})
+                await websocket.send_json({"type": "status", "state": "idle"})
+                continue
+
+            # 3. Turno de la IA (Prioridad Absoluta de GPU)
             conversation_history.append({"role": "user", "content": user_text})
             # Mantener contexto conversacional de las últimas 8 intervenciones
             if len(conversation_history) > 9:
                 conversation_history = [conversation_history[0]] + conversation_history[-8:]
 
-            current_generation_id += 1
-            gen_id = current_generation_id
-            is_interrupted = False
+            # Inyectar memoria persistente ultraligera (RAG de notas y vocabulario guardado)
+            memory_block = database.get_memory_context_string(limit_notes=4, limit_vocab=4)
+            current_system_prompt = PROMPTS[current_mode] + (f"\n{memory_block}" if memory_block else "")
+            
+            messages_for_llm = [{"role": "system", "content": current_system_prompt}] + [
+                m for m in conversation_history if m.get("role") != "system"
+            ]
 
             await websocket.send_json({"type": "status", "state": "thinking"})
 
             payload = {
                 "model": MODEL_NAME,
-                "messages": conversation_history,
+                "messages": messages_for_llm,
                 "stream": True,
                 "keep_alive": -1,
                 "options": {
@@ -394,8 +500,6 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                     "num_predict": 28
                 }
             }
-
-            loop = asyncio.get_running_loop()
             
             # COLA ASÍNCRONA PRODUCER-CONSUMER CON IDIOMA Y VOZ NATIVOS
             tts_queue: asyncio.Queue = asyncio.Queue()
@@ -519,6 +623,14 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                         "full_text": ai_text
                     })
 
+                    # Persistir respuesta del asistente en SQLite
+                    database.save_message(
+                        session_id=session_id,
+                        role="assistant",
+                        content=ai_text,
+                        turn_id=turn_id
+                    )
+
                     # Solo si estamos en modo tutor de inglés ejecutamos traducción de apoyo y feedback
                     if current_mode == "en":
                         async def background_post_chat_analysis(t_id: str, u_text: str, a_text: str):
@@ -529,18 +641,25 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                                     a_tr = analysis.get("ai_tr")
                                     tip = analysis.get("tip")
                                     if u_tr:
+                                        database.update_message_translation(t_id, "user", u_tr)
                                         await websocket.send_json({
                                             "type": "user_translation",
                                             "turn_id": t_id,
                                             "translation": u_tr
                                         })
                                     if a_tr:
+                                        database.update_message_translation(t_id, "assistant", a_tr)
                                         await websocket.send_json({
                                             "type": "ai_translation",
                                             "turn_id": t_id,
                                             "translation": a_tr
                                         })
                                     if tip and str(tip).strip().lower() not in ["null", "none", ""]:
+                                        database.save_vocabulary_or_correction(
+                                            phrase=u_text,
+                                            tip=tip,
+                                            language=current_mode
+                                        )
                                         await websocket.send_json({
                                             "type": "coaching_feedback",
                                             "turn_id": t_id,
