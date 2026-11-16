@@ -6,6 +6,9 @@ Uses lightweight lazy imports for heavy ML libraries (Kokoro, Faster-Whisper).
 
 from core.config import (
     PROMPTS,
+    PERSONALITIES,
+    DEFAULT_PERSONALITY,
+    get_system_prompt,
     MODEL_NAME,
     OLLAMA_URL,
     DEFAULT_SPANISH_VOICE,
@@ -42,6 +45,9 @@ def synthesize_audio_wav_base64(*args, **kwargs):
 
 __all__ = [
     "PROMPTS",
+    "PERSONALITIES",
+    "DEFAULT_PERSONALITY",
+    "get_system_prompt",
     "MODEL_NAME",
     "OLLAMA_URL",
     "DEFAULT_SPANISH_VOICE",

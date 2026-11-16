@@ -41,6 +41,11 @@ const interruptBtn = document.getElementById("interrupt-btn");
 const micSelect = document.getElementById("mic-select");
 const voiceSelect = document.getElementById("voice-select");
 const vadSelect = document.getElementById("vad-select");
+const personalitySelect = document.getElementById("personality-select");
+const visualizerCanvas = document.getElementById("audio-visualizer-canvas");
+const visualizerCtx = visualizerCanvas ? visualizerCanvas.getContext("2d") : null;
+let micAnalyser = null;
+let visualizerAnimationId = null;
 const micMeterContainer = document.getElementById("mic-meter-container");
 const meterBarFill = document.getElementById("meter-bar-fill");
 const meterThresholdLine = document.getElementById("meter-threshold-line");
@@ -86,6 +91,11 @@ const I18N = {
         label_mic: "🎤 Mic:",
         label_voice: "🗣️ Voz IA:",
         label_vad: "🎚️ Filtro VAD:",
+        label_personality: "🎭 Personalidad:",
+        pers_coach: "🎓 Tutor de Idiomas",
+        pers_friendly: "🤗 Amigo Casual",
+        pers_tech: "💻 Senior Tech Lead",
+        pers_executive: "👔 Mentor Ejecutivo",
         vad_low: "Baja (Filtra respiración fuerte y ventilador)",
         vad_med: "Media (Recomendada)",
         vad_high: "Alta (Habla muy suave)",
@@ -133,6 +143,11 @@ const I18N = {
         label_mic: "🎤 Mic:",
         label_voice: "🗣️ AI Voice:",
         label_vad: "🎚️ VAD Filter:",
+        label_personality: "🎭 Personality:",
+        pers_coach: "🎓 Language Coach",
+        pers_friendly: "🤗 Casual Friend",
+        pers_tech: "💻 Senior Tech Lead",
+        pers_executive: "👔 Executive Advisor",
         vad_low: "Low (Filters heavy breathing & fan)",
         vad_med: "Medium (Recommended)",
         vad_high: "High (Soft speech)",
@@ -180,6 +195,11 @@ const I18N = {
         label_mic: "🎤 Microfone:",
         label_voice: "🗣️ Voz da IA:",
         label_vad: "🎚️ Filtro VAD:",
+        label_personality: "🎭 Personalidade:",
+        pers_coach: "🎓 Tutor de Idiomas",
+        pers_friendly: "🤗 Amigo Casual",
+        pers_tech: "💻 Senior Tech Lead",
+        pers_executive: "👔 Mentor Executivo",
         vad_low: "Baixa (Filtra respiração forte e ventilador)",
         vad_med: "Média (Recomendada)",
         vad_high: "Alta (Fala suave)",
@@ -227,6 +247,11 @@ const I18N = {
         label_mic: "🎤 Micro :",
         label_voice: "🗣️ Voix IA :",
         label_vad: "🎚️ Filtre VAD :",
+        label_personality: "🎭 Personnalité :",
+        pers_coach: "🎓 Coach de Langue",
+        pers_friendly: "🤗 Ami Proche",
+        pers_tech: "💻 Senior Tech Lead",
+        pers_executive: "👔 Conseiller Exécutif",
         vad_low: "Faible (Filtre bruits et souffle)",
         vad_med: "Moyen (Recommandé)",
         vad_high: "Élevé (Voix douce)",
@@ -274,6 +299,11 @@ const I18N = {
         label_mic: "🎤 Mikrofon:",
         label_voice: "🗣️ KI-Stimme:",
         label_vad: "🎚️ VAD-Filter:",
+        label_personality: "🎭 Persönlichkeit:",
+        pers_coach: "🎓 Sprachcoach",
+        pers_friendly: "🤗 Guter Freund",
+        pers_tech: "💻 Senior Tech Lead",
+        pers_executive: "👔 Executive Berater",
         vad_low: "Niedrig (Filtert Atemgeräusche)",
         vad_med: "Mittel (Empfohlen)",
         vad_high: "Hoch (Leise Sprache)",
@@ -321,6 +351,11 @@ const I18N = {
         label_mic: "🎤 Microfono:",
         label_voice: "🗣️ Voce IA:",
         label_vad: "🎚️ Filtro VAD:",
+        label_personality: "🎭 Personalità:",
+        pers_coach: "🎓 Tutor Linguistico",
+        pers_friendly: "🤗 Amico Informale",
+        pers_tech: "💻 Senior Tech Lead",
+        pers_executive: "👔 Mentor Esecutivo",
         vad_low: "Bassa (Filtra respiro forte e ventole)",
         vad_med: "Media (Consigliata)",
         vad_high: "Alta (Voce bassa)",
@@ -368,6 +403,11 @@ const I18N = {
         label_mic: "🎤 マイク:",
         label_voice: "🗣️ AI音声:",
         label_vad: "🎚️ VAD感度:",
+        label_personality: "🎭 性格 / ペルソナ:",
+        pers_coach: "🎓 語学コーチ",
+        pers_friendly: "🤗 親しい友人",
+        pers_tech: "💻 シニアテックリード",
+        pers_executive: "👔 エグゼクティブ顧問",
         vad_low: "低 (呼吸音やファンをカット)",
         vad_med: "中 (推奨)",
         vad_high: "高 (小声用)",
@@ -415,6 +455,11 @@ const I18N = {
         label_mic: "🎤 麦克风:",
         label_voice: "🗣️ AI声音:",
         label_vad: "🎚️ VAD静音阈值:",
+        label_personality: "🎭 导师人设:",
+        pers_coach: "🎓 语言教练",
+        pers_friendly: "🤗 挚友伙伴",
+        pers_tech: "💻 资深技术专家",
+        pers_executive: "👔 高管战略导师",
         vad_low: "低 (过滤粗重呼吸与风扇噪音)",
         vad_med: "中 (推荐标准)",
         vad_high: "高 (适合低声耳语)",
@@ -496,9 +541,22 @@ function setUiLanguage(lang) {
     const lMic = document.getElementById("label-mic");
     const lVoice = document.getElementById("label-voice");
     const lVad = document.getElementById("label-vad");
+    const lPers = document.getElementById("label-personality");
     if (lMic) lMic.innerText = t.label_mic;
     if (lVoice) lVoice.innerText = t.label_voice;
     if (lVad) lVad.innerText = t.label_vad;
+    if (lPers && t.label_personality) lPers.innerText = t.label_personality;
+
+    if (personalitySelect && t.pers_coach) {
+        const optCoach = personalitySelect.querySelector('option[value="coach"]');
+        const optFriend = personalitySelect.querySelector('option[value="friendly"]');
+        const optTech = personalitySelect.querySelector('option[value="tech"]');
+        const optExec = personalitySelect.querySelector('option[value="executive"]');
+        if (optCoach) optCoach.innerText = t.pers_coach;
+        if (optFriend) optFriend.innerText = t.pers_friendly;
+        if (optTech) optTech.innerText = t.pers_tech;
+        if (optExec) optExec.innerText = t.pers_executive;
+    }
 
     const optLow = document.getElementById("opt-vad-low");
     const optMed = document.getElementById("opt-vad-med");
@@ -561,6 +619,12 @@ function connectWebSocket() {
             socket.send(JSON.stringify({
                 type: "set_voice",
                 voice: voiceSelect.value
+            }));
+        }
+        if (personalitySelect) {
+            socket.send(JSON.stringify({
+                type: "set_personality",
+                personality: personalitySelect.value
             }));
         }
         socket.send(JSON.stringify({
@@ -942,6 +1006,107 @@ interruptBtn.addEventListener("click", () => {
 });
 
 // ==========================================
+// VISUALIZADOR DE AUDIO 60 FPS (CANVAS)
+// ==========================================
+
+function drawVisualizer() {
+    if (!visualizerCanvas || !visualizerCtx) return;
+    visualizerAnimationId = requestAnimationFrame(drawVisualizer);
+
+    const width = visualizerCanvas.width;
+    const height = visualizerCanvas.height;
+    visualizerCtx.clearRect(0, 0, width, height);
+    const centerY = height / 2;
+
+    if (isAudioPlaying) {
+        // AI Speaking: Multi-harmonic luminous wave
+        const time = Date.now() * 0.005;
+        visualizerCtx.lineWidth = 2.5;
+        visualizerCtx.strokeStyle = "#a855f7"; // violet
+        visualizerCtx.shadowBlur = 12;
+        visualizerCtx.shadowColor = "#c084fc";
+
+        visualizerCtx.beginPath();
+        for (let x = 0; x < width; x++) {
+            const progress = x / width;
+            const envelope = Math.sin(progress * Math.PI);
+            const y = centerY + Math.sin(x * 0.04 + time * 3) * 16 * envelope
+                              + Math.sin(x * 0.08 - time * 2) * 8 * envelope;
+            if (x === 0) visualizerCtx.moveTo(x, y);
+            else visualizerCtx.lineTo(x, y);
+        }
+        visualizerCtx.stroke();
+
+        // Second wave: cyan harmonic
+        visualizerCtx.strokeStyle = "#06b6d4";
+        visualizerCtx.shadowColor = "#38bdf8";
+        visualizerCtx.beginPath();
+        for (let x = 0; x < width; x++) {
+            const progress = x / width;
+            const envelope = Math.sin(progress * Math.PI);
+            const y = centerY + Math.sin(x * 0.05 - time * 2.5) * 12 * envelope
+                              + Math.cos(x * 0.03 + time) * 6 * envelope;
+            if (x === 0) visualizerCtx.moveTo(x, y);
+            else visualizerCtx.lineTo(x, y);
+        }
+        visualizerCtx.stroke();
+
+    } else if (micAnalyser && (isRecording || isUserSpeakingInCall)) {
+        // User Speaking: Real-time frequency / time-domain waveform
+        const bufferLength = micAnalyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        micAnalyser.getByteTimeDomainData(dataArray);
+
+        visualizerCtx.lineWidth = 2.5;
+        visualizerCtx.strokeStyle = "#10b981"; // emerald
+        visualizerCtx.shadowBlur = 12;
+        visualizerCtx.shadowColor = "#34d399";
+
+        visualizerCtx.beginPath();
+        const sliceWidth = width / bufferLength;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+            const v = dataArray[i] / 128.0;
+            const progress = i / bufferLength;
+            const envelope = Math.sin(progress * Math.PI);
+            const y = centerY + (v - 1.0) * (height / 2) * 1.6 * envelope;
+
+            if (i === 0) visualizerCtx.moveTo(x, y);
+            else visualizerCtx.lineTo(x, y);
+
+            x += sliceWidth;
+        }
+        visualizerCtx.lineTo(width, centerY);
+        visualizerCtx.stroke();
+
+    } else {
+        // Idle: Soft ambient breathing sine
+        const time = Date.now() * 0.002;
+        visualizerCtx.lineWidth = 1.5;
+        visualizerCtx.strokeStyle = "rgba(59, 130, 246, 0.45)";
+        visualizerCtx.shadowBlur = 6;
+        visualizerCtx.shadowColor = "rgba(59, 130, 246, 0.5)";
+
+        visualizerCtx.beginPath();
+        for (let x = 0; x < width; x++) {
+            const progress = x / width;
+            const envelope = Math.sin(progress * Math.PI);
+            const y = centerY + Math.sin(x * 0.03 + time) * 5 * envelope;
+            if (x === 0) visualizerCtx.moveTo(x, y);
+            else visualizerCtx.lineTo(x, y);
+        }
+        visualizerCtx.stroke();
+    }
+}
+
+function startVisualizerLoop() {
+    if (!visualizerAnimationId) {
+        drawVisualizer();
+    }
+}
+
+// ==========================================
 // ENCODIFICADOR WAV 16kHz MONO
 // ==========================================
 
@@ -1060,6 +1225,10 @@ async function setupAudioStream() {
 
         audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
         const source = audioContext.createMediaStreamSource(mediaStream);
+
+        micAnalyser = audioContext.createAnalyser();
+        micAnalyser.fftSize = 256;
+        source.connect(micAnalyser);
 
         const gainNode = audioContext.createGain();
         gainNode.gain.value = 1.0; // Ganancia 1:1 natural (evita amplificar respiraciones y ruidos de fondo)
@@ -1519,6 +1688,21 @@ window.addEventListener("DOMContentLoaded", () => {
     if (exportHistoryBtn) {
         exportHistoryBtn.addEventListener("click", exportSessionToMarkdown);
     }
+
+    if (personalitySelect) {
+        personalitySelect.addEventListener("change", (e) => {
+            const pers = e.target.value;
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: "set_personality",
+                    personality: pers
+                }));
+            }
+        });
+    }
+
+    // Iniciar loop del visualizador de frecuencias 60 FPS
+    startVisualizerLoop();
 
     // Inicializar datos persistentes e idioma UI en el arranque
     setUiLanguage(currentUiLang);

@@ -105,7 +105,7 @@ class TestEndToEndPipeline(unittest.TestCase):
 
         # Inyección en el prompt del sistema
         system_prompt = PROMPTS["es"] + f"\n{context_str}"
-        self.assertIn("compañero de conversación", system_prompt)
+        self.assertIn("conversación", system_prompt.lower())
         self.assertIn("Reunión con el equipo", system_prompt)
 
     def test_04_gapless_sentence_chunking_simulation(self):

@@ -1,5 +1,8 @@
+import os
 import re
 import time
+import subprocess
+import webbrowser
 from datetime import datetime
 from typing import Optional, Dict, Any
 import database
@@ -32,6 +35,63 @@ def _format_time_es(dt: datetime) -> str:
 
 def _format_time_en(dt: datetime) -> str:
     return dt.strftime("It is %I:%M %p on %A, %B %d.")
+
+def query_gpu_status() -> Dict[str, Any]:
+    """Consulta estado térmico y memoria VRAM de la GPU NVIDIA vía nvidia-smi."""
+    try:
+        res = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name,temperature.gpu,memory.used,memory.total", "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=2.0
+        )
+        if res.returncode == 0 and res.stdout.strip():
+            parts = [p.strip() for p in res.stdout.strip().split(",")]
+            if len(parts) >= 4:
+                gpu_name = parts[0]
+                temp_c = int(parts[1])
+                mem_used_mb = float(parts[2])
+                mem_total_mb = float(parts[3])
+                mem_used_gb = round(mem_used_mb / 1024.0, 1)
+                mem_total_gb = round(mem_total_mb / 1024.0, 1)
+                mem_free_gb = round(mem_total_gb - mem_used_gb, 1)
+                return {
+                    "available": True,
+                    "name": gpu_name,
+                    "temperature_c": temp_c,
+                    "memory_used_gb": mem_used_gb,
+                    "memory_total_gb": mem_total_gb,
+                    "memory_free_gb": mem_free_gb
+                }
+    except Exception:
+        pass
+    return {"available": False}
+
+def _launch_target_app(target: str) -> Optional[Dict[str, str]]:
+    """Ejecuta de forma segura una aplicación del sistema o abre un servicio."""
+    target = target.lower().strip()
+    if any(k in target for k in ["calc", "calculadora", "calculator"]):
+        subprocess.Popen(["calc.exe"])
+        return {"es": "la calculadora", "en": "Calculator"}
+    if any(k in target for k in ["notepad", "bloc de notas", "notas"]):
+        subprocess.Popen(["notepad.exe"])
+        return {"es": "el Bloc de Notas", "en": "Notepad"}
+    if any(k in target for k in ["code", "vs code", "visual studio code"]):
+        subprocess.Popen(["code"], shell=True)
+        return {"es": "Visual Studio Code", "en": "Visual Studio Code"}
+    if "spotify" in target:
+        subprocess.Popen(["cmd", "/c", "start", "spotify:"], shell=True)
+        return {"es": "Spotify", "en": "Spotify"}
+    if "youtube" in target:
+        webbrowser.open("https://www.youtube.com")
+        return {"es": "YouTube", "en": "YouTube"}
+    if "github" in target:
+        webbrowser.open("https://github.com/cristianhar/realtime-voice-assistant-local")
+        return {"es": "tu repositorio de GitHub", "en": "your GitHub repository"}
+    if any(k in target for k in ["navegador", "browser", "google"]):
+        webbrowser.open("https://www.google.com")
+        return {"es": "el navegador web", "en": "the web browser"}
+    return None
 
 def detect_and_execute_tool(text: str, lang_mode: str = "es") -> Optional[Dict[str, Any]]:
     """
@@ -180,6 +240,83 @@ def detect_and_execute_tool(text: str, lang_mode: str = "es") -> Optional[Dict[s
             "lang": "es" if is_spanish else "en",
             "data": {"vocabulary": vocab}
         }
+
+    # 5. TOOL: Consultar Estado de Hardware / GPU NVIDIA
+    hw_patterns_es = [
+        r'\b(estado\s+del\s+(?:hardware|sistema|equipo|computador|pc)|c[oó]mo\s+est[aá]\s+(?:la\s+)?gpu|temperatura\s+(?:de\s+la\s+)?gpu|cu[aá]nta\s+vram|memoria\s+de\s+video|rendimiento\s+del\s+(?:sistema|pc))\b'
+    ]
+    hw_patterns_en = [
+        r'\b(hardware\s+status|system\s+status|how\s+is\s+the\s+gpu|gpu\s+temp|gpu\s+temperature|vram\s+usage|video\s+memory|pc\s+performance)\b'
+    ]
+
+    is_hw_es = any(re.search(p, clean_no_punct) for p in hw_patterns_es)
+    is_hw_en = any(re.search(p, clean_no_punct) for p in hw_patterns_en)
+
+    if is_hw_es or is_hw_en:
+        gpu_info = query_gpu_status()
+        is_spanish = is_hw_es or (lang_mode == "es")
+
+        if gpu_info.get("available"):
+            name = gpu_info["name"]
+            temp = gpu_info["temperature_c"]
+            used = gpu_info["memory_used_gb"]
+            total = gpu_info["memory_total_gb"]
+            free = gpu_info["memory_free_gb"]
+
+            if is_spanish:
+                spoken = f"Tu GPU {name} está a {temp} grados, con {used} gigabytes de VRAM ocupados de {total} gigas totales. Tienes {free} gigabytes libres."
+                display = f"⚡ GPU: {name} | Temp: {temp}°C | VRAM: {used}/{total} GB ({free} GB libres)"
+                lang = "es"
+            else:
+                spoken = f"Your {name} GPU is at {temp} degrees Celsius, using {used} gigabytes of VRAM out of {total} gigas. You have {free} gigabytes free."
+                display = f"⚡ GPU: {name} | Temp: {temp}°C | VRAM: {used}/{total} GB ({free} GB free)"
+                lang = "en"
+        else:
+            if is_spanish:
+                spoken = "El sistema está respondiendo con normalidad y los modelos locales están listos en memoria."
+                display = "⚡ Sistema activo | Modelos locales cargados en memoria."
+                lang = "es"
+            else:
+                spoken = "System performance is optimal and all local models are loaded and ready in memory."
+                display = "⚡ System active | Local models loaded in memory."
+                lang = "en"
+
+        return {
+            "tool": "get_hardware_status",
+            "spoken_response": spoken,
+            "display_response": display,
+            "lang": lang,
+            "data": gpu_info
+        }
+
+    # 6. TOOL: Ejecutar o Abrir Aplicaciones Locales / Enlaces
+    launch_match = re.search(r'\b(?:abre|abrir|ejecuta|lanzar|lanza|inicia|open|launch|start|run)\s+(?:la\s+|el\s+|the\s+)?([a-z0-9\s]+)\b', clean_no_punct)
+    if launch_match:
+        target_str = launch_match.group(1).strip()
+        launched = _launch_target_app(target_str)
+        if launched:
+            is_spanish = (lang_mode == "es") or any(k in clean_no_punct for k in ["abre", "abrir", "ejecuta", "lanzar", "lanza", "inicia"])
+            user_profile = database.get_user_profile()
+            user_name = user_profile.get("name", "Cristian").split()[0]
+
+            if is_spanish:
+                app_label = launched["es"]
+                spoken = f"Listo {user_name}, he abierto {app_label} para ti."
+                display = f"🚀 Aplicación abierta: {app_label}"
+                lang = "es"
+            else:
+                app_label = launched["en"]
+                spoken = f"Sure {user_name}, I opened {app_label} for you."
+                display = f"🚀 Application opened: {app_label}"
+                lang = "en"
+
+            return {
+                "tool": "launch_application",
+                "spoken_response": spoken,
+                "display_response": display,
+                "lang": lang,
+                "data": {"target": target_str, "app": app_label}
+            }
 
     return None
 

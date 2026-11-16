@@ -1,5 +1,11 @@
 import os
+import sys
 import unittest
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 import database
 import tools
 
@@ -103,6 +109,41 @@ class TestToolsAndMemory(unittest.TestCase):
     def test_no_tool_fallback_to_llm(self):
         res = tools.detect_and_execute_tool("Hola, ¿cómo estás hoy amigo?", lang_mode="es")
         self.assertIsNone(res)
+
+    def test_hardware_status_tool_es(self):
+        res = tools.detect_and_execute_tool("¿Cómo está la GPU y el rendimiento?", lang_mode="es")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["tool"], "get_hardware_status")
+        self.assertEqual(res["lang"], "es")
+        self.assertTrue("GPU" in res["display_response"] or "Sistema" in res["display_response"])
+
+    def test_hardware_status_tool_en(self):
+        res = tools.detect_and_execute_tool("How is the GPU temperature and vram usage?", lang_mode="en")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["tool"], "get_hardware_status")
+        self.assertEqual(res["lang"], "en")
+        self.assertTrue("GPU" in res["display_response"] or "System" in res["display_response"])
+
+    def test_launch_application_tool(self):
+        # Usar unittest.mock para evitar abrir ventanas físicas en el runner de pruebas
+        from unittest.mock import patch
+        with patch("subprocess.Popen") as mock_popen:
+            res = tools.detect_and_execute_tool("Abre la calculadora por favor", lang_mode="es")
+            self.assertIsNotNone(res)
+            self.assertEqual(res["tool"], "launch_application")
+            self.assertEqual(res["lang"], "es")
+            self.assertIn("calculadora", res["spoken_response"].lower())
+            mock_popen.assert_called_once()
+
+    def test_personalities_prompt_generation(self):
+        from core.config import get_system_prompt, PERSONALITIES
+        for p_key in PERSONALITIES.keys():
+            prompt_es = get_system_prompt("es", personality=p_key)
+            prompt_en = get_system_prompt("en", personality=p_key)
+            self.assertIsInstance(prompt_es, str)
+            self.assertIsInstance(prompt_en, str)
+            self.assertTrue(len(prompt_es) > 50)
+            self.assertTrue(len(prompt_en) > 50)
 
 if __name__ == "__main__":
     unittest.main()

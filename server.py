@@ -19,6 +19,9 @@ import database
 import tools
 from core import (
     PROMPTS,
+    PERSONALITIES,
+    DEFAULT_PERSONALITY,
+    get_system_prompt,
     MODEL_NAME,
     DEFAULT_SPANISH_VOICE,
     DEFAULT_ENGLISH_VOICE,
@@ -98,6 +101,11 @@ async def api_save_note(note_data: dict):
     note_id = database.save_voice_note(content, title)
     return {"status": "ok", "note_id": note_id}
 
+@app.get("/api/personalities")
+async def api_get_personalities():
+    """Retorna las personalidades conversacionales disponibles."""
+    return PERSONALITIES
+
 @app.get("/api/profile")
 async def api_get_profile():
     """Retorna el perfil y preferencias del usuario."""
@@ -119,12 +127,13 @@ async def websocket_chat_endpoint(websocket: WebSocket):
     print("✓ Cliente conectado al WebSocket.")
 
     current_mode = "en"
+    current_personality = DEFAULT_PERSONALITY
     current_spanish_voice = DEFAULT_SPANISH_VOICE
     current_english_voice = DEFAULT_ENGLISH_VOICE
     session_id = f"sess-{int(time.time())}"
     database.create_or_get_session(session_id, current_mode, current_english_voice)
     conversation_history: List[Dict[str, str]] = [
-        {"role": "system", "content": PROMPTS[current_mode]}
+        {"role": "system", "content": get_system_prompt(current_mode, current_personality)}
     ]
 
     current_generation_id = 0
@@ -147,11 +156,22 @@ async def websocket_chat_endpoint(websocket: WebSocket):
             if msg_type == "set_mode":
                 cancel_background_analysis()
                 new_mode = data.get("mode", "en")
-                if new_mode in PROMPTS:
+                if new_mode in ["en", "es", "auto"]:
                     current_mode = new_mode
-                    conversation_history = [{"role": "system", "content": PROMPTS[current_mode]}]
-                    print(f"Modo cambiado a: {current_mode}")
+                    conversation_history = [{"role": "system", "content": get_system_prompt(current_mode, current_personality)}]
+                    print(f"Modo cambiado a: {current_mode} (personalidad: {current_personality})")
                     await websocket.send_json({"type": "mode_changed", "mode": current_mode})
+                continue
+
+            # 2. Configuración dinámica de personalidad conversacional
+            if msg_type == "set_personality":
+                cancel_background_analysis()
+                new_personality = data.get("personality", DEFAULT_PERSONALITY)
+                if new_personality in PERSONALITIES:
+                    current_personality = new_personality
+                    conversation_history = [{"role": "system", "content": get_system_prompt(current_mode, current_personality)}]
+                    print(f"Personalidad cambiada a: {current_personality}")
+                    await websocket.send_json({"type": "personality_changed", "personality": current_personality})
                 continue
 
             # 2. Configuración dinámica de voces

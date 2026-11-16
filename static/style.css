@@ -288,6 +288,18 @@ body {
     color: var(--text-secondary);
 }
 
+.audio-visualizer-canvas {
+    width: 100%;
+    max-width: 440px;
+    height: 50px;
+    margin: 8px auto 2px auto;
+    border-radius: var(--radius-sm);
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.4);
+    display: block;
+}
+
 @keyframes breathing {
     0%, 100% { transform: scale(0.95); opacity: 0.85; }
     50% { transform: scale(1.05); opacity: 1; }
@@ -574,7 +586,7 @@ body {
     color: var(--text-secondary);
 }
 
-.mic-select, .voice-select, .vad-select {
+.mic-select, .voice-select, .vad-select, .personality-select {
     background-color: var(--bg-surface-elevated);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
@@ -587,7 +599,7 @@ body {
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.mic-select:focus, .voice-select:focus, .vad-select:focus {
+.mic-select:focus, .voice-select:focus, .vad-select:focus, .personality-select:focus {
     border-color: var(--accent-blue);
     box-shadow: 0 0 6px rgba(59, 130, 246, 0.3);
 }

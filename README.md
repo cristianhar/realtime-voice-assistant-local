@@ -20,9 +20,17 @@ Permite mantener llamadas de voz continuas con **manos libres**, transcripción 
 * ⚡ **Transcripción Parcial en Vivo (*Live Streaming STT*):** Las palabras que dices se proyectan en pantalla en tiempo real con una latencia de apenas **~26 ms** gracias a Faster-Whisper en GPU CUDA.
 * 💾 **Memoria Persistente Local (SQLite):** Historial completo de conversaciones, sesiones, traducciones y métricas guardadas automáticamente en `voice_assistant.db` sin enviar ningún dato a la nube.
 * 🧠 **RAG Híbrido con FTS5 y Perfil de Usuario:** Búsqueda semántica por palabras clave en milisegundos (`notes_fts`, `messages_fts`) y memoria persistente del usuario (`Cristian Arboleda`), adaptando respuestas según tus intereses y nivel.
+* 🎭 **Selector de Personalidades Conversacionales:** Modifica al vuelo el rol y tono del modelo con prompts optimizados:
+  * 🎓 *Language Coach (Tutor de Idiomas):* Corrige y modela errores gramaticales con empatía y calidez.
+  * 🤗 *Casual Friend (Amigo de Confianza):* Tono relajado, fresco y espontáneo de llamada telefónica.
+  * 💻 *Senior Tech Lead:* Conciso, pragmático y con criterio técnico de arquitectura de software.
+  * 👔 *Executive Advisor (Mentor Ejecutivo):* Asertivo, estratégico y orientado a alto impacto.
+* 🌊 **Visualizador de Audio 60 FPS en Canvas:** Curvas de frecuencia luminosas en tiempo real (verde esmeralda para el micrófono del usuario vía `AnalyserNode`, violeta y cian harmónico durante el habla de la IA, y respiración azul en reposo).
 * 🌐 **Interfaz Global Multiidioma (8 Idiomas Internacionales):** Selector en la cabecera para traducir toda la UI al instante entre 🇪🇸 Español, 🇺🇸 English, 🇧🇷 Português, 🇫🇷 Français, 🇩🇪 Deutsch, 🇮🇹 Italiano, 🇯🇵 日本語 y 🇨🇳 简体中文, con exportación directa de sesiones a Markdown (📥).
 * 🔧 **Tool Calling por Voz con Latencia Cero:** Ejecución directa y respuesta por voz instantánea (< 250 ms TTFA sin esperar al LLM):
   * 🕒 *Hora y fecha:* `"¿Qué hora es?"`, `"What time is it?"`
+  * ⚡ *Estado de Hardware / GPU:* `"¿Cómo está la GPU?"`, `"Hardware status"`, informando temperatura, VRAM en uso y memoria libre consultando `nvidia-smi`.
+  * 🚀 *Lanzar Aplicaciones Locales:* `"Abre la calculadora"`, `"Abre Visual Studio Code"`, `"Abre Spotify"`, `"Abre YouTube"`, `"Abre GitHub"`.
   * 📌 *Guardar notas:* `"Toma nota de comprar café"`, `"Recuérdame llamar al médico"`, `"Take a note to buy headphones"`
   * 📋 *Leer notas:* `"¿Cuáles son mis notas?"`, `"Léeme mis notas"`, `"Show my notes"`
   * 📝 *Vocabulario aprendido:* `"¿Qué vocabulario tengo?"`, `"What vocabulary did I learn?"`
@@ -176,8 +184,11 @@ Incluimos scripts listos para desbloquear el máximo rendimiento:
 El proyecto cuenta con un sistema de verificación estricto (**Quality Gate**) que valida cada componente antes de cualquier despliegue:
 
 ```bash
-# 🚀 Ejecutar la suite completa End-to-End y unitaria (25 tests en < 0.2s):
+# 🚀 Ejecutar la suite completa End-to-End y unitaria (32 tests en < 0.3s):
 python tests/run_all_tests.py
+
+# 🔊 Ejecutar con validación de modelos reales de audio (Kokoro TTS + Whisper CUDA loopback):
+python tests/run_all_tests.py --with-audio
 ```
 
 Suites especializadas incluidas en `tests/`:
