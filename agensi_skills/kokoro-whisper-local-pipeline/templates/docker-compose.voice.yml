@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  voice-assistant:
+    image: python:3.11-slim
+    container_name: voice-assistant-local
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    volumes:
+      - ./:/app
+    working_dir: /app
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: >
+      sh -c "pip install -r requirements.txt && python server.py --host 0.0.0.0 --port 8000"

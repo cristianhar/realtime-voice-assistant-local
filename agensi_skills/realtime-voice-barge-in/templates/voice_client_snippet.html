@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Realtime Voice Barge-In Client</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .voice-orb { width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle, #38bdf8, #0284c7); box-shadow: 0 0 30px rgba(56, 189, 248, 0.4); cursor: pointer; transition: transform 0.1s ease; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+    .voice-orb.speaking { animation: pulse 1s infinite alternate; }
+    @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.15); box-shadow: 0 0 50px rgba(56, 189, 248, 0.8); } }
+    #status { margin-top: 20px; color: #94a3b8; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <div id="orb" class="voice-orb">🎙️</div>
+  <div id="status">Click orb to start hands-free voice loop</div>
+
+  <script src="scripts/vad_audio_processor.js"></script>
+  <script>
+    let ws = null;
+    let audioQueue = [];
+    let isPlaying = false;
+    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let currentSource = null;
+
+    function interruptPlayback() {
+      if (currentSource) {
+        try { currentSource.stop(0); } catch(e){}
+        currentSource = null;
+      }
+      audioQueue = [];
+      isPlaying = false;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "interrupt" }));
+      }
+      document.getElementById("status").textContent = "Interrupted! Listening to you...";
+    }
+
+    const processor = new RealtimeAudioProcessor({
+      onSpeechStart: () => {
+        if (isPlaying) {
+          interruptPlayback();
+        }
+      },
+      onSpeechEnd: () => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "speech_end" }));
+        }
+      },
+      onAudioChunk: (pcmBuffer, rms, isSpeaking) => {
+        if (isSpeaking && ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(pcmBuffer);
+        }
+      }
+    });
+
+    document.getElementById("orb").onclick = async () => {
+      await audioCtx.resume();
+      await processor.start();
+      document.getElementById("status").textContent = "Connected. Speak naturally. Interrupt anytime.";
+    };
+  </script>
+</body>
+</html>
