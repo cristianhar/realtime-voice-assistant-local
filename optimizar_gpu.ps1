@@ -59,6 +59,15 @@ try {
     Write-Host "  Aviso en Registro: $_" -ForegroundColor DarkYellow
 }
 
+# 5. Habilitar puerto 8000 en Firewall de Windows para conexion movil
+Write-Host "`n[5/5] Habilitando puerto 8000 en Firewall de Windows para conexion movil..." -ForegroundColor Green
+try {
+    netsh advfirewall firewall add rule name="VoiceAssistantLocal" dir=in action=allow protocol=TCP localport=8000 | Out-Null
+    Write-Host "  OK: Puerto 8000 autorizado para acceso desde el celular en tu red Wi-Fi." -ForegroundColor Gray
+} catch {
+    Write-Host "  Aviso en Firewall: $_" -ForegroundColor DarkYellow
+}
+
 Write-Host "`n======================================================================" -ForegroundColor Cyan
 Write-Host "  ESTADO ACTUALIZADO DE LA GPU:" -ForegroundColor Yellow
 Write-Host "======================================================================" -ForegroundColor Cyan

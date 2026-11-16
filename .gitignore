@@ -38,3 +38,8 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 
+# SSL Certificates & Keys (generated dynamically)
+certs/
+*.pem
+*.key
+

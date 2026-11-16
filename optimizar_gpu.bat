@@ -37,6 +37,11 @@ reg add "HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\0001" /v PowerMizerLevelAC /t REG_DWORD /d 1 /f >nul 2>&1
 
 echo.
+echo [5/5] Habilitando puerto 8000 en Firewall de Windows para conexion movil...
+netsh advfirewall firewall add rule name="VoiceAssistantLocal" dir=in action=allow protocol=TCP localport=8000 >nul 2>&1
+echo   Puerto 8000 autorizado para acceso desde el celular en tu red Wi-Fi.
+
+echo.
 echo ======================================================================
 echo   ESTADO ACTUALIZADO DE LA GPU:
 echo ======================================================================

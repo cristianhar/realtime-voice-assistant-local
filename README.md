@@ -135,11 +135,15 @@ El script levantará Ollama, iniciará el servidor FastAPI y abrirá tu navegado
 # 1. Asegúrate de tener Ollama activo
 ollama serve
 
-# 2. Inicia el servidor
+# 2. Inicia el servidor (escucha en PC y en tu red local para celulares)
 python server.py
 
+# 📱 Para usarlo desde tu celular con micrófono habilitado (iOS/Android):
+python server.py --https
+
 # 3. Abre en tu navegador
-http://127.0.0.1:8000
+# En esta PC:     http://localhost:8000 (o https://localhost:8000)
+# En tu Celular:  https://192.168.x.x:8000 (muestra tu IP exacta en el banner de arranque)
 ```
 
 ---

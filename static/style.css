@@ -854,3 +854,149 @@ body {
     font-family: monospace;
 }
 
+/* ==========================================
+   DISEÑO RESPONSIVO (MOBILE FIRST & TABLET)
+   ========================================== */
+
+@media (max-width: 960px) {
+    .app-header {
+        flex-direction: column;
+        padding: 10px 14px;
+        gap: 10px;
+    }
+
+    .header-left, .header-center, .header-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .header-center {
+        order: 2;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        justify-content: flex-start;
+    }
+
+    .header-right {
+        order: 3;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .hardware-badge {
+        display: none; /* Ahorra espacio vertical valioso en smartphones */
+    }
+
+    .lang-selector-group {
+        width: 100%;
+        display: flex;
+        justify-content: stretch;
+    }
+
+    .lang-btn {
+        flex: 1;
+        text-align: center;
+        padding: 6px 8px;
+        font-size: 0.78rem;
+    }
+
+    .main-content {
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        height: auto;
+    }
+
+    .chat-section {
+        height: auto;
+        min-height: calc(100vh - 180px);
+        padding: 12px 14px;
+    }
+
+    .sidebar-section {
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+        padding: 14px;
+    }
+
+    .orb-container {
+        padding: 12px 0 8px 0;
+    }
+
+    .voice-orb {
+        width: 78px;
+        height: 78px;
+    }
+
+    .orb-core {
+        width: 38px;
+        height: 38px;
+    }
+
+    .audio-visualizer-canvas {
+        max-width: 100%;
+        height: 44px;
+    }
+
+    .chat-messages {
+        max-height: 48vh;
+    }
+
+    .controls-area {
+        position: sticky;
+        bottom: 0;
+        background: var(--bg-dark);
+        padding-top: 8px;
+        z-index: 10;
+    }
+
+    .audio-settings-bar {
+        gap: 8px;
+    }
+
+    .setting-item {
+        flex: 1 1 45%;
+        min-width: 130px;
+    }
+
+    .mic-select, .voice-select, .vad-select, .personality-select {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .call-mode-button {
+        width: 100%;
+        justify-content: center;
+        padding: 14px 20px;
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .app-header .app-logo .logo-text {
+        font-size: 1.05rem;
+    }
+
+    .user-badge {
+        font-size: 0.72rem;
+        padding: 3px 8px;
+    }
+
+    .ui-lang-switch {
+        padding: 2px 6px;
+    }
+
+    .chat-messages {
+        max-height: 40vh;
+    }
+
+    .message-bubble {
+        max-width: 92%;
+        font-size: 0.88rem;
+    }
+
+    .text-input-bar input {
+        font-size: 0.88rem;
+    }
+}
+

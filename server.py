@@ -514,5 +514,114 @@ async def websocket_chat_endpoint(websocket: WebSocket):
         cancel_background_analysis()
         print(f"Excepción WebSocket: {e}")
 
+def get_local_ip() -> str:
+    """Detecta la dirección IP de la máquina en la red local Wi-Fi o Ethernet."""
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+def ensure_ssl_certificates(local_ip: str) -> tuple:
+    """Genera certificados autofirmados X.509 válidos para HTTPS y Web Audio en móviles."""
+    certs_dir = os.path.join(PROJECT_ROOT, "certs")
+    os.makedirs(certs_dir, exist_ok=True)
+    cert_path = os.path.join(certs_dir, "cert.pem")
+    key_path = os.path.join(certs_dir, "key.pem")
+
+    if not (os.path.isfile(cert_path) and os.path.isfile(key_path)):
+        try:
+            import datetime
+            import ipaddress
+            from cryptography import x509
+            from cryptography.x509.oid import NameOID
+            from cryptography.hazmat.primitives import hashes, serialization
+            from cryptography.hazmat.primitives.asymmetric import rsa
+
+            key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+            subject = issuer = x509.Name([
+                x509.NameAttribute(NameOID.COMMON_NAME, "VoiceAssistantLocal"),
+            ])
+            san_items = [
+                x509.DNSName("localhost"),
+                x509.IPAddress(ipaddress.IPv4Address("127.0.0.1"))
+            ]
+            if local_ip != "127.0.0.1":
+                san_items.append(x509.IPAddress(ipaddress.IPv4Address(local_ip)))
+
+            now = datetime.datetime.now(datetime.timezone.utc)
+            cert = x509.CertificateBuilder().subject_name(
+                subject
+            ).issuer_name(
+                issuer
+            ).public_key(
+                key.public_key()
+            ).serial_number(
+                x509.random_serial_number()
+            ).not_valid_before(
+                now - datetime.timedelta(days=1)
+            ).not_valid_after(
+                now + datetime.timedelta(days=365)
+            ).add_extension(
+                x509.SubjectAlternativeName(san_items), critical=False
+            ).sign(key, hashes.SHA256())
+
+            with open(key_path, "wb") as f:
+                f.write(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()))
+            with open(cert_path, "wb") as f:
+                f.write(cert.public_bytes(serialization.Encoding.PEM))
+            print("✓ Certificados SSL generados exitosamente en certs/")
+        except Exception as e:
+            print(f"⚠️ No se pudieron generar certificados SSL: {e}")
+            return None, None
+
+    return cert_path, key_path
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)
+    import argparse
+    parser = argparse.ArgumentParser(description="Realtime Local Voice Assistant Server")
+    parser.add_argument("--host", default="0.0.0.0", help="Host IP para escuchar (0.0.0.0 para red local)")
+    parser.add_argument("--port", type=int, default=8000, help="Puerto del servidor (8000)")
+    parser.add_argument("--https", action="store_true", help="Activar HTTPS para micrófono en móviles (iOS/Android)")
+    args = parser.parse_args()
+
+    local_ip = get_local_ip()
+    port = args.port
+
+    ssl_keyfile = None
+    ssl_certfile = None
+    protocol = "http"
+
+    if args.https or os.environ.get("USE_HTTPS") == "1":
+        cert_p, key_p = ensure_ssl_certificates(local_ip)
+        if cert_p and key_p:
+            ssl_certfile = cert_p
+            ssl_keyfile = key_p
+            protocol = "https"
+
+    print("\n" + "=" * 65)
+    print("  🎙️ VOICE ASSISTANT LOCAL - SERVIDOR MULTI-DISPOSITIVO")
+    print("=" * 65)
+    print(f"  💻 En esta PC:     {protocol}://localhost:{port}")
+    print(f"  📱 En tu Celular:  {protocol}://{local_ip}:{port}")
+    if protocol == "https":
+        print("  🔒 Modo HTTPS activo: habilita micrófono en Chrome y Safari móvil.")
+        print("     * Acepta la advertencia de certificado autofirmado en tu celular.")
+    else:
+        print("  💡 Acceso móvil con micrófono:")
+        print(f"     Opción A (Recomendada): Inicia con HTTPS: python server.py --https")
+        print(f"     Opción B (Android Chrome): chrome://flags/#unsafely-treat-insecure-origin-as-secure -> {protocol}://{local_ip}:{port}")
+    print("=" * 65 + "\n")
+
+    uvicorn.run(
+        app,
+        host=args.host,
+        port=port,
+        ssl_certfile=ssl_certfile,
+        ssl_keyfile=ssl_keyfile,
+        reload=False
+    )
