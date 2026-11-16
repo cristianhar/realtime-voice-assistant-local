@@ -170,22 +170,43 @@ Incluimos scripts listos para desbloquear el máximo rendimiento:
 
 ---
 
-## 🧪 Pruebas Automatizadas y Benchmarks
+## 🧪 Pruebas Automatizadas, End-to-End y Benchmarks
 
-Dentro de la carpeta `tests/` se incluyen suites completas para medir rendimiento, continuidad de voz y latencias:
+El proyecto cuenta con un sistema de verificación estricto (**Quality Gate**) que valida cada componente antes de cualquier despliegue:
 
 ```bash
-# Evaluación de continuidad, medición de silencios/frenos y barge-in
-python tests/test_benchmark_continuity.py
+# 🚀 Ejecutar la suite completa End-to-End y unitaria (25 tests en < 0.2s):
+python tests/run_all_tests.py
+```
 
-# Prueba integral de flujo conversacional y WebSocket
-python tests/test_spanish_voice_flow.py
+Suites especializadas incluidas en `tests/`:
+* `tests/test_e2e_pipeline.py`: Prueba integral de todo el ciclo de vida (SQLite, Tool Calling, RAG e inyección de memoria).
+* `tests/test_chunker.py`: Verificación del segmentador de oraciones y prevención de frenos de audio.
+* `tests/test_sanitization.py`: Filtros de texto, eliminación de asteriscos narrativos y emojis.
+* `tests/test_tools_memory.py`: Pruebas de herramientas locales (Hora, Notas, Vocabulario) y persistencia SQLite.
+* `tests/test_benchmark_continuity.py`: Evaluación de continuidad, medición de silencios/frenos y barge-in.
+* `tests/run_benchmarks.py`: Benchmark de componentes aislados (Faster-Whisper CUDA, Llama 3.2 TTFT, Kokoro TTS).
 
-# Benchmark completo de componentes (STT, LLM TTFT, Kokoro TTS)
-python tests/run_benchmarks.py
+---
 
-# Simulación de conversaciones multi-turno e interrupciones
-python tests/benchmark_simulation_suite.py
+## 🏛️ Arquitectura Modular del Código (`core/`)
+
+Para garantizar máxima legibilidad, mantenimiento y robustez, el backend está modularizado:
+
+```text
+├── core/
+│   ├── __init__.py      # Exportación y lazy-loading de módulos pesados
+│   ├── config.py        # Configuración centralizada, rutas, DLLs CUDA y prompts
+│   ├── chunker.py       # Algoritmo de división de oraciones fluidas (SentenceChunker)
+│   ├── stt.py           # Faster-Whisper CUDA fp16 y filtros de energía vocal
+│   ├── tts.py           # Kokoro ONNX multihilo, fonemizador G2P y sanitización
+│   ├── llm.py           # Cliente streaming de Ollama Llama 3.2 y análisis post-turno
+│   └── utils.py         # Heurísticas de detección de idioma y utilidades
+├── database.py          # Capa de persistencia SQLite (sesiones, mensajes, notas, vocabulario)
+├── tools.py             # Despachador de herramientas por voz con latencia cero
+├── server.py            # Orquestador FastAPI WebSocket limpio y declarativo
+├── tests/               # Suites de pruebas unitarias, E2E y benchmarks de latencia
+└── .agent/skills/       # Skill nativa de control de calidad (voice-e2e-quality-gate)
 ```
 
 ---
