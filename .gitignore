@@ -1,0 +1,37 @@
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Audio outputs & recordings
+*.wav
+*.mp3
+*.ogg
+*.flac
+
+# Large Model weights (Exceed GitHub 100MB limit)
+# Run the setup script to download them automatically
+models/*.onnx
+models/*.bin
+models/*.json
+!models/.gitkeep
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+
