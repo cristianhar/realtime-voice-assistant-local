@@ -205,5 +205,25 @@ class TestConversationHistory(unittest.TestCase):
         self.assertIn('deleteSession', self.history_js)
         self.assertIn('generateAiTitle', self.history_js)
 
+    def test_07_lazy_session_filtering_and_delete(self):
+        """Valida que sesiones vacías con título por defecto no aparezcan en get_all_sessions y que delete limpie correctamente."""
+        # 1. Crear sesión vacía con título por defecto
+        empty_id = f"test-empty-{int(time.time() * 1000)}"
+        database.create_or_get_session(empty_id, title="Nueva conversación")
+
+        # No debe aparecer en get_all_sessions porque total_turns == 0 y title == 'Nueva conversación'
+        sessions = database.get_all_sessions(limit=100)
+        self.assertFalse(any(s["id"] == empty_id for s in sessions))
+
+        # Al guardar un mensaje, ahora total_turns > 0, por lo que debe aparecer
+        database.save_message(empty_id, "user", "Hola asistente", turn_id="t1")
+        sessions_after = database.get_all_sessions(limit=100)
+        self.assertTrue(any(s["id"] == empty_id for s in sessions_after))
+
+        # Eliminar sesión
+        deleted = database.delete_session(empty_id)
+        self.assertTrue(deleted)
+        self.assertFalse(any(s["id"] == empty_id for s in database.get_all_sessions(limit=100)))
+
 if __name__ == "__main__":
     unittest.main()

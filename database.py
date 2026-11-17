@@ -172,6 +172,9 @@ def create_or_get_session(session_id: str, mode: str = "en", voice: str = "af_sa
                 (session_id, mode, voice, sess_title)
             )
             conn.commit()
+        elif title and title != "Nueva conversación" and row["title"] == "Nueva conversación":
+            cursor.execute("UPDATE sessions SET title = ? WHERE id = ?", (title, session_id))
+            conn.commit()
         return session_id
 
 def get_session_by_id(session_id: str) -> Optional[Dict[str, Any]]:
@@ -187,12 +190,13 @@ def get_session_by_id(session_id: str) -> Optional[Dict[str, Any]]:
         return dict(row) if row else None
 
 def get_all_sessions(limit: int = 50) -> List[Dict[str, Any]]:
-    """Retorna todas las sesiones ordenadas por última actualización."""
+    """Retorna todas las sesiones activas (con al menos 1 turno o título personalizado) ordenadas por última actualización."""
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT id, title, language_mode, voice_name, total_turns, created_at, updated_at
             FROM sessions
+            WHERE total_turns > 0 OR (title != 'Nueva conversación' AND title IS NOT NULL)
             ORDER BY COALESCE(updated_at, created_at) DESC
             LIMIT ?
         """, (limit,))
@@ -229,10 +233,14 @@ def delete_session(session_id: str) -> bool:
     """Elimina una conversación y todos sus mensajes asociados."""
     with get_connection() as conn:
         cursor = conn.cursor()
+        try:
+            cursor.execute("DELETE FROM messages_fts WHERE msg_id IN (SELECT id FROM messages WHERE session_id = ?)", (session_id,))
+        except Exception:
+            pass
         cursor.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
         cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
         conn.commit()
-        return cursor.rowcount > 0
+        return True
 
 def generate_ai_session_title(session_id: str) -> str:
     """

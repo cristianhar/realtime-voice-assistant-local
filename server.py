@@ -181,7 +181,7 @@ def api_create_session(data: Optional[Dict[str, Any]] = None):
     mode = payload.get("mode", "en")
     voice = payload.get("voice", DEFAULT_ENGLISH_VOICE)
     title = payload.get("title", "Nueva conversación")
-    session_id = f"sess-{int(time.time())}"
+    session_id = f"sess-{int(time.time() * 1000)}"
     database.create_or_get_session(session_id, mode, voice, title=title)
     return {"status": "ok", "session_id": session_id, "title": title}
 
@@ -267,8 +267,8 @@ async def websocket_chat_endpoint(websocket: WebSocket):
     current_spanish_voice = DEFAULT_SPANISH_VOICE
     current_english_voice = DEFAULT_ENGLISH_VOICE
     is_whisper_mode = False
-    session_id = f"sess-{int(time.time())}"
-    database.create_or_get_session(session_id, current_mode, current_english_voice)
+    session_id = f"sess-{int(time.time() * 1000)}"
+    # Lazy Session Creation: No persistir en SQLite hasta que el usuario envíe su primer mensaje
     conversation_history: List[Dict[str, str]] = [
         {"role": "system", "content": get_system_prompt(current_mode, current_personality)}
     ]
@@ -312,13 +312,17 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                 target_session_id = data.get("session_id")
                 if target_session_id:
                     session_id = target_session_id
-                    database.create_or_get_session(session_id, current_mode, current_english_voice)
-                    prev_messages = database.get_session_messages(session_id)
+                    current_sess = database.get_session_by_id(session_id)
+                    if current_sess:
+                        prev_messages = database.get_session_messages(session_id)
+                        curr_title = current_sess.get("title") or "Nueva conversación"
+                    else:
+                        prev_messages = []
+                        curr_title = "Nueva conversación"
+
                     conversation_history = [{"role": "system", "content": get_system_prompt(current_mode, current_personality)}]
                     for pm in prev_messages[-10:]:
                         conversation_history.append({"role": pm["role"], "content": pm["content"]})
-                    current_sess = database.get_session_by_id(session_id)
-                    curr_title = current_sess["title"] if current_sess else "Nueva conversación"
                     print(f"Sesión activa cambiada a: {session_id} ('{curr_title}')")
                     await websocket.send_json({
                         "type": "session_switched",
@@ -453,7 +457,8 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                 "lang": detected_lang
             })
 
-            # Persistir mensaje del usuario en SQLite
+            # Persistir mensaje del usuario en SQLite (Lazy session creation)
+            database.create_or_get_session(session_id, current_mode, current_english_voice)
             database.save_message(
                 session_id=session_id,
                 role="user",

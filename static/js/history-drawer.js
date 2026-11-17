@@ -94,25 +94,15 @@ class HistoryDrawerManager {
         }
     }
 
-    async createNewSession() {
-        try {
-            const res = await fetch("/api/sessions", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title: "Nueva conversación" })
-            });
-            if (res.ok) {
-                const data = await res.json();
-                const newId = data.session_id;
-                this.activeSessionId = newId;
-                await this.fetchSessions();
-                this.close();
-                if (typeof this.onNewChat === "function") {
-                    this.onNewChat(newId, data.title);
-                }
-            }
-        } catch (e) {
-            console.error("[HistoryDrawer] Error creando nueva conversación:", e);
+    createNewSession() {
+        // Enfoque Lazy (Estilo ChatGPT):
+        // Genera un nuevo ID en memoria sin insertar sesiones vacías en SQLite
+        const newId = `sess-${Math.floor(Date.now() / 1000)}`;
+        this.activeSessionId = newId;
+        this.close();
+        this.render();
+        if (typeof this.onNewChat === "function") {
+            this.onNewChat(newId, "Nueva conversación");
         }
     }
 
@@ -134,7 +124,9 @@ class HistoryDrawerManager {
         }
     }
 
-    async renameSession(sessionId, currentTitle) {
+    async renameSession(sessionId) {
+        const session = this.sessions.find(s => s.id === sessionId);
+        const currentTitle = session ? session.title : "Nueva conversación";
         const newTitle = prompt("Escribe el nuevo título para esta conversación:", currentTitle);
         if (!newTitle || !newTitle.trim() || newTitle.trim() === currentTitle) return;
 
@@ -145,7 +137,6 @@ class HistoryDrawerManager {
                 body: JSON.stringify({ title: newTitle.trim() })
             });
             if (res.ok) {
-                const session = this.sessions.find(s => s.id === sessionId);
                 if (session) session.title = newTitle.trim();
                 this.render();
             }
@@ -183,8 +174,10 @@ class HistoryDrawerManager {
         }
     }
 
-    async deleteSession(sessionId, title) {
-        const confirmMsg = `¿Eliminar la conversación "${title || 'esta conversación'}"?\nSe borrarán todos sus mensajes de forma permanente.`;
+    async deleteSession(sessionId) {
+        const session = this.sessions.find(s => s.id === sessionId);
+        const title = session ? session.title : "esta conversación";
+        const confirmMsg = `¿Eliminar la conversación "${title}"?\nSe borrarán todos sus mensajes de forma permanente.`;
         if (!confirm(confirmMsg)) return;
 
         try {
@@ -198,7 +191,7 @@ class HistoryDrawerManager {
                 }
                 this.render();
 
-                // Si eliminamos la sesión que estaba activa, iniciar nueva conversación
+                // Si eliminamos la sesión que estaba activa, limpiar chat e iniciar borrador nuevo sin persistir
                 if (this.activeSessionId === sessionId) {
                     this.createNewSession();
                 }
@@ -249,13 +242,13 @@ class HistoryDrawerManager {
                         </div>
                     </div>
                     <div class="history-item-actions">
-                        <button class="history-action-btn edit-btn" title="Renombrar conversación" onclick="event.stopPropagation(); window.historyDrawer.renameSession('${s.id}', '${s.title || 'Nueva conversación'}')">
+                        <button class="history-action-btn edit-btn" title="Renombrar conversación" onclick="event.stopPropagation(); window.historyDrawer.renameSession('${s.id}')">
                             ✏️
                         </button>
                         <button class="history-action-btn ai-btn" title="Generar título con IA (LLaMA 3.2)" onclick="event.stopPropagation(); window.historyDrawer.generateAiTitle('${s.id}', this)">
                             🤖
                         </button>
-                        <button class="history-action-btn delete-btn" title="Eliminar conversación" onclick="event.stopPropagation(); window.historyDrawer.deleteSession('${s.id}', '${s.title || 'Nueva conversación'}')">
+                        <button class="history-action-btn delete-btn" title="Eliminar conversación" onclick="event.stopPropagation(); window.historyDrawer.deleteSession('${s.id}')">
                             🗑️
                         </button>
                     </div>
