@@ -78,3 +78,4 @@ def get_loaded_tools_metadata() -> List[Dict[str, Any]]:
             "version": getattr(mod, "VERSION", "1.0.0")
         })
     return meta
+

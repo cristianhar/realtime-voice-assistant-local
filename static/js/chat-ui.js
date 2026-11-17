@@ -121,12 +121,26 @@ class ChatUIManager {
         if (this.metricTime) this.metricTime.innerText = timeStr;
 
         const showTranslation = currentLangMode === "en";
+        const t = (k, fb) => (window.I18nManager ? (window.I18nManager.t(k) || fb) : fb);
 
-        let roleLabel = "👤 You (English)";
-        if (currentLangMode === "es") {
-            roleLabel = "👤 Tú (Español)";
-        } else if (currentLangMode === "auto") {
+        let roleLabel = `${t("role_you", "👤 You")} (${currentLangMode === "es" ? "Español" : "English"})`;
+        if (currentLangMode === "auto") {
             roleLabel = `👤 You / Tú [${lang ? lang.toUpperCase() : "AUTO"}]`;
+        }
+
+        // PREVENCIÓN DE DUPLICADOS: Si la burbuja ya existe (por ejemplo enviada por input de texto), actualizar STT si llega y retornar
+        if (turnId && document.getElementById(`user-bubble-${turnId}`)) {
+            const existingBubble = document.getElementById(`user-bubble-${turnId}`);
+            if (latency) {
+                let metaEl = existingBubble.querySelector(".bubble-meta");
+                if (!metaEl) {
+                    metaEl = document.createElement("div");
+                    metaEl.className = "bubble-meta";
+                    existingBubble.appendChild(metaEl);
+                }
+                metaEl.innerHTML = `<span>🎙️ STT: ${latency} ms</span>`;
+            }
+            return;
         }
 
         let bubble = this.currentPartialBubble;
@@ -140,7 +154,7 @@ class ChatUIManager {
                     <span class="bubble-time">${timeStr}</span>
                 </div>
                 <div class="bubble-text-en">${this.escapeHtml(text)}</div>
-                ${showTranslation ? `<div class="bubble-text-es"><span>🇪🇸</span> <span id="user-tr-${turnId}" class="translation-placeholder">Traduciendo...</span></div>` : ""}
+                ${showTranslation ? `<div class="bubble-text-es"><span>🇪🇸</span> <span id="user-tr-${turnId}" class="translation-placeholder">${t("translating", "Traduciendo...")}</span></div>` : ""}
                 ${latency ? `<div class="bubble-meta"><span>🎙️ STT: ${latency} ms</span></div>` : ""}
             `;
         } else if (this.chatMessages) {
@@ -153,7 +167,7 @@ class ChatUIManager {
                     <span class="bubble-time">${timeStr}</span>
                 </div>
                 <div class="bubble-text-en">${this.escapeHtml(text)}</div>
-                ${showTranslation ? `<div class="bubble-text-es"><span>🇪🇸</span> <span id="user-tr-${turnId}" class="translation-placeholder">Traduciendo...</span></div>` : ""}
+                ${showTranslation ? `<div class="bubble-text-es"><span>🇪🇸</span> <span id="user-tr-${turnId}" class="translation-placeholder">${t("translating", "Traduciendo...")}</span></div>` : ""}
                 ${latency ? `<div class="bubble-meta"><span>🎙️ STT: ${latency} ms</span></div>` : ""}
             `;
             this.chatMessages.appendChild(bubble);
@@ -167,15 +181,13 @@ class ChatUIManager {
         }
         this.addToVocabulary(text);
 
-        // Crear burbuja de respuesta del asistente
-        let aiRoleLabel = "🤖 AI Tutor (English)";
-        if (currentLangMode === "es") {
-            aiRoleLabel = "🤖 Asistente (Español)";
-        } else if (currentLangMode === "auto") {
-            aiRoleLabel = "🤖 AI (Bilingual)";
-        }
+        // Crear burbuja de respuesta del asistente solo si no existe ya para este turnId
+        if (this.chatMessages && (!turnId || !document.getElementById(`ai-bubble-${turnId}`))) {
+            let aiRoleLabel = `${t("role_assistant", "🤖 Assistant")} (${currentLangMode === "es" ? "Español" : "English"})`;
+            if (currentLangMode === "auto") {
+                aiRoleLabel = "🤖 AI (Bilingual)";
+            }
 
-        if (this.chatMessages) {
             const aiBubble = document.createElement("div");
             aiBubble.className = "message-bubble assistant";
             aiBubble.id = `ai-bubble-${turnId}`;
@@ -190,7 +202,7 @@ class ChatUIManager {
                 <div id="ai-text-${turnId}" class="bubble-text-en"></div>
                 <div id="ai-tr-${turnId}" class="bubble-text-es hidden"><span>🇪🇸</span> <span class="ai-translation-content"></span></div>
                 <div id="ai-meta-${turnId}" class="bubble-meta ai-meta hidden">
-                    <span>⏱️ Respuesta en: <span class="total-time-val">--</span> s</span>
+                    <span>${t("response_time", "⏱️ Respuesta en:")} <span class="total-time-val">--</span> s</span>
                 </div>
             `;
             this.chatMessages.appendChild(aiBubble);
@@ -318,6 +330,61 @@ class ChatUIManager {
         a.download = `sesion_voz_${new Date().toISOString().slice(0, 10)}.md`;
         a.click();
         URL.revokeObjectURL(url);
+    }
+
+    clearMessages() {
+        if (!this.chatMessages) return;
+        this.chatMessages.innerHTML = `
+            <div class="chat-empty-hint">
+                <span>💬 Habla o escribe para comenzar</span>
+            </div>
+        `;
+        this.currentPartialBubble = null;
+        this.currentPartialTextEl = null;
+    }
+
+    loadHistoricalMessages(messages, currentLangMode = "en") {
+        if (!this.chatMessages) return;
+        this.chatMessages.innerHTML = "";
+        if (!messages || messages.length === 0) {
+            this.clearMessages();
+            return;
+        }
+
+        messages.forEach((msg) => {
+            const timeStr = msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+            if (msg.role === "user") {
+                const bubble = document.createElement("div");
+                bubble.className = "message-bubble user";
+                bubble.id = `user-bubble-${msg.turn_id || msg.id}`;
+                let roleLabel = currentLangMode === "es" ? "👤 Tú (Español)" : "👤 You (English)";
+                bubble.innerHTML = `
+                    <div class="bubble-header">
+                        <span class="bubble-role">${roleLabel}</span>
+                        ${timeStr ? `<span class="bubble-time">${timeStr}</span>` : ""}
+                    </div>
+                    <div class="bubble-text-en">${this.escapeHtml(msg.content)}</div>
+                    ${msg.translation ? `<div class="bubble-text-es"><span>🇪🇸</span> <span>${this.escapeHtml(msg.translation)}</span></div>` : ""}
+                `;
+                this.chatMessages.appendChild(bubble);
+            } else if (msg.role === "assistant") {
+                const bubble = document.createElement("div");
+                bubble.className = "message-bubble ai";
+                bubble.id = `ai-bubble-${msg.turn_id || msg.id}`;
+                bubble.innerHTML = `
+                    <div class="bubble-header">
+                        <span class="bubble-role">🤖 Assistant</span>
+                        ${timeStr ? `<span class="bubble-time">${timeStr}</span>` : ""}
+                    </div>
+                    <div class="bubble-text-en">${this.escapeHtml(msg.content)}</div>
+                `;
+                this.chatMessages.appendChild(bubble);
+            }
+        });
+
+        this.currentPartialBubble = null;
+        this.currentPartialTextEl = null;
+        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
 }
 

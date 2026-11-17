@@ -46,13 +46,40 @@ const notesDrawer = new NotesDrawerManager();
 const gpuTelemetry = new GpuTelemetryManager();
 const earcons = new EarconManager();
 
+let currentSessionId = `sess-${Math.floor(Date.now() / 1000)}`;
+
+const historyDrawer = new HistoryDrawerManager({}, {
+    initialSessionId: currentSessionId,
+    onSwitchSession: (sessionId, messages) => {
+        currentSessionId = sessionId;
+        chatUI.loadHistoricalMessages(messages, currentLanguageMode);
+        sendWsMessage({ type: "switch_session", session_id: sessionId });
+        chatUI.setOrbState("idle", "Conversación cargada");
+    },
+    onNewChat: (newSessionId, title) => {
+        currentSessionId = newSessionId;
+        chatUI.clearMessages();
+        sendWsMessage({ type: "switch_session", session_id: newSessionId });
+        chatUI.setOrbState("idle", "Nueva conversación lista");
+    }
+});
+window.historyDrawer = historyDrawer;
+
 const audioPlayer = new AudioPlayerManager({
     onPlayStart: () => {
-        if (interruptBtn) interruptBtn.classList.remove("hidden");
+        if (interruptBtn) {
+            interruptBtn.classList.remove("hidden");
+            const parent = interruptBtn.closest(".action-btn-interrupt");
+            if (parent) parent.classList.remove("hidden");
+        }
         chatUI.setOrbState("speaking", "Hablando...");
     },
     onPlayEnd: () => {
-        if (interruptBtn) interruptBtn.classList.add("hidden");
+        if (interruptBtn) {
+            interruptBtn.classList.add("hidden");
+            const parent = interruptBtn.closest(".action-btn-interrupt");
+            if (parent) parent.classList.add("hidden");
+        }
         if (isCallMode) {
             chatUI.setOrbState("listening", "📞 Te escucho...");
         } else {
@@ -60,7 +87,11 @@ const audioPlayer = new AudioPlayerManager({
         }
     },
     onInterrupt: () => {
-        if (interruptBtn) interruptBtn.classList.add("hidden");
+        if (interruptBtn) {
+            interruptBtn.classList.add("hidden");
+            const parent = interruptBtn.closest(".action-btn-interrupt");
+            if (parent) parent.classList.add("hidden");
+        }
     }
 });
 
@@ -116,7 +147,9 @@ function sendWavBuffer(samples, messageType = "audio_final", turnId = null) {
         const payload = { type: messageType, audio: base64Wav };
         if (messageType === "audio_final") {
             turnStartTime = Date.now();
-            payload.turn_id = turnId || ("turn-" + turnStartTime);
+            const tid = turnId || ("turn-" + turnStartTime);
+            payload.turn_id = tid;
+            audioPlayer.startTurn(tid);
             firstAudioReceived = false;
         }
         sendWsMessage(payload);
@@ -164,7 +197,7 @@ function handleServerMessage(data) {
                 chatUI.setOrbState("thinking", "Transcribiendo tu voz...");
             } else if (data.state === "thinking") {
                 chatUI.setOrbState("thinking", "Pensando respuesta...");
-            } else if (data.state === "idle" && !audioPlayer.isAudioPlaying) {
+            } else if (data.state === "idle" && !audioPlayer.isAudioPlaying && !audioPlayer.activeTurnId) {
                 if (isCallMode) {
                     chatUI.setOrbState("listening", "📞 Llamada activa: habla cuando quieras");
                 } else {
@@ -219,10 +252,11 @@ function handleServerMessage(data) {
                 }
                 firstAudioReceived = true;
             }
-            audioPlayer.enqueueAudio(data.audio);
+            audioPlayer.enqueueAudio(data.audio, data.turn_id);
             break;
 
         case "ai_done":
+            audioPlayer.markTurnComplete(data.turn_id);
             if (data.turn_id && data.full_text) {
                 const aiTextEl = document.getElementById(`ai-text-${data.turn_id}`);
                 if (aiTextEl && !aiTextEl.innerText.trim()) {
@@ -273,6 +307,20 @@ function handleServerMessage(data) {
             chatUI.setOrbState(isCallMode ? "listening" : "idle", isCallMode ? "📞 Te escucho..." : "Interrumpido");
             break;
 
+        case "session_switched":
+            currentSessionId = data.session_id;
+            if (window.historyDrawer) {
+                window.historyDrawer.setActiveSession(data.session_id);
+            }
+            break;
+
+        case "title_generated":
+            console.log(`[AutoTitling] Título generado por IA: ${data.title} para sesión ${data.session_id}`);
+            if (window.historyDrawer) {
+                window.historyDrawer.onTitleGenerated(data.session_id, data.title);
+            }
+            break;
+
         case "error":
             chatUI.showSystemNotification(data.message);
             chatUI.setOrbState(isCallMode ? "listening" : "idle", isCallMode ? "📞 Te escucho..." : "Listo para conversar");
@@ -297,6 +345,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     connectWebSocket();
     gpuTelemetry.startPolling(4500);
     notesDrawer.fetchNotes();
+    historyDrawer.fetchSessions();
 
     if (window.AudioVisualizer) window.AudioVisualizer.init();
     audioRecorder.populateMicrophones(micSelect);
@@ -381,6 +430,100 @@ window.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // 6.1 Popover de Información del Sistema (!) en Header
+    const btnInfoModal = document.getElementById("btn-info-modal");
+    const systemInfoPopover = document.getElementById("system-info-popover");
+    const btnClosePopover = document.getElementById("btn-close-popover");
+
+    if (btnInfoModal && systemInfoPopover) {
+        btnInfoModal.addEventListener("click", (e) => {
+            e.stopPropagation();
+            systemInfoPopover.classList.toggle("hidden");
+        });
+
+        if (btnClosePopover) {
+            btnClosePopover.addEventListener("click", () => {
+                systemInfoPopover.classList.add("hidden");
+            });
+        }
+
+        document.addEventListener("click", (e) => {
+            if (!systemInfoPopover.contains(e.target) && !btnInfoModal.contains(e.target)) {
+                systemInfoPopover.classList.add("hidden");
+            }
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && !systemInfoPopover.classList.contains("hidden")) {
+                systemInfoPopover.classList.add("hidden");
+            }
+        });
+    }
+
+    // 6.1.1 Popover de Ayuda & Bienvenida (?) en Header
+    const btnHelpModal = document.getElementById("btn-help-modal");
+    const welcomeHelpPopover = document.getElementById("welcome-help-popover");
+    const btnCloseHelp = document.getElementById("btn-close-help");
+
+    if (btnHelpModal && welcomeHelpPopover) {
+        btnHelpModal.addEventListener("click", (e) => {
+            e.stopPropagation();
+            welcomeHelpPopover.classList.toggle("hidden");
+        });
+
+        if (btnCloseHelp) {
+            btnCloseHelp.addEventListener("click", () => {
+                welcomeHelpPopover.classList.add("hidden");
+            });
+        }
+
+        document.addEventListener("click", (e) => {
+            if (!welcomeHelpPopover.contains(e.target) && !btnHelpModal.contains(e.target)) {
+                welcomeHelpPopover.classList.add("hidden");
+            }
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && !welcomeHelpPopover.classList.contains("hidden")) {
+                welcomeHelpPopover.classList.add("hidden");
+            }
+        });
+    }
+
+    // 6.2 Modal de Configuración de Audio & Voz (Apertura y Cierre)
+    const btnAudioSettings = document.getElementById("btn-audio-settings");
+    const btnDockSettings = document.getElementById("btn-dock-settings");
+    const settingsModalOverlay = document.getElementById("settings-modal-overlay");
+    const btnCloseSettings = document.getElementById("btn-close-settings");
+    const btnSaveSettings = document.getElementById("btn-save-settings");
+
+    function openSettingsModal() {
+        if (settingsModalOverlay) settingsModalOverlay.classList.remove("hidden");
+    }
+
+    function closeSettingsModal() {
+        if (settingsModalOverlay) settingsModalOverlay.classList.add("hidden");
+    }
+
+    if (btnAudioSettings) btnAudioSettings.addEventListener("click", openSettingsModal);
+    if (btnDockSettings) btnDockSettings.addEventListener("click", openSettingsModal);
+    if (btnCloseSettings) btnCloseSettings.addEventListener("click", closeSettingsModal);
+    if (btnSaveSettings) btnSaveSettings.addEventListener("click", closeSettingsModal);
+
+    if (settingsModalOverlay) {
+        settingsModalOverlay.addEventListener("click", (e) => {
+            if (e.target === settingsModalOverlay) {
+                closeSettingsModal();
+            }
+        });
+    }
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && settingsModalOverlay && !settingsModalOverlay.classList.contains("hidden")) {
+            closeSettingsModal();
+        }
+    });
+
     // 7. Botón Interrumpir (Barge-in manual)
     if (interruptBtn) {
         interruptBtn.addEventListener("click", () => {
@@ -445,6 +588,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         const turnId = "turn-" + Date.now();
         turnStartTime = Date.now();
         firstAudioReceived = false;
+        audioPlayer.startTurn(turnId);
 
         chatUI.createUserBubble(text, null, currentLanguageMode, turnId, currentLanguageMode);
         chatUI.setOrbState("thinking", "Pensando respuesta...");

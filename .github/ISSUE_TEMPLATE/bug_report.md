@@ -27,3 +27,4 @@ A clear and concise description of what you expected to happen.
 
 **Screenshots / Logs**
 If applicable, paste terminal output or browser console logs.
+

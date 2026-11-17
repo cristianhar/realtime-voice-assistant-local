@@ -28,3 +28,4 @@ irm https://raw.githubusercontent.com/cristianhar/realtime-voice-assistant-local
 ```bash
 curl -fsSL https://raw.githubusercontent.com/cristianhar/realtime-voice-assistant-local/main/install.sh | bash
 ```
+

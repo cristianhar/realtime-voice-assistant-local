@@ -31,3 +31,4 @@ def execute(user_text: str, lang: str = "es") -> str:
     if lang.startswith("es"):
         return random.choice(QUOTES_ES)
     return random.choice(QUOTES_EN)
+

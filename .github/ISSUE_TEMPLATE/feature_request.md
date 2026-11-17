@@ -17,3 +17,4 @@ A clear and concise description of any alternative solutions or features you've 
 
 **Target Hardware Impact**
 Does this feature fit within the 6GB VRAM budget? (Yes / No / CPU only)
+

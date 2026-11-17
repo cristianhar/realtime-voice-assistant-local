@@ -4,9 +4,11 @@ import time
 import json
 import base64
 import asyncio
+import urllib.request
+import urllib.parse
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -127,7 +129,7 @@ async def api_delete_note(note_id: int):
     return {"status": "ok" if success else "not_found", "deleted": success}
 
 @app.post("/api/notes/synthesize")
-async def api_synthesize_notes():
+def api_synthesize_notes():
     """Sintetiza de forma ejecutiva todas las notas recientes usando Llama 3.2."""
     notes = database.get_recent_notes(limit=25)
     if not notes:
@@ -149,12 +151,67 @@ async def api_synthesize_notes():
             data=data,
             headers={"Content-Type": "application/json"}
         )
-        with urllib.request.urlopen(req, timeout=12.0) as resp:
+        with urllib.request.urlopen(req, timeout=4.0) as resp:
             body = json.loads(resp.read().decode("utf-8"))
             summary = body.get("message", {}).get("content", "").strip()
-            return {"status": "ok", "summary": summary, "count": len(notes)}
+            if summary:
+                return {"status": "ok", "summary": summary, "count": len(notes)}
     except Exception as e:
-        return {"status": "error", "summary": f"No se pudo generar la síntesis automática: {e}"}
+        print(f"[Notes Synthesis Warning] Ollama no disponible: {e}")
+    
+    # Fallback local ejecutivo estructurado si Ollama no responde de inmediato
+    bullets_summary = "\n".join([f"• [{n['title']}]: {n['content']}" for n in notes[:6]])
+    fallback_summary = f"Síntesis de tus {len(notes)} notas recientes:\n\n{bullets_summary}\n\n💡 Recuerda revisar tus pendientes clave hoy."
+    return {"status": "ok", "summary": fallback_summary, "count": len(notes)}
+
+# ==============================================================================
+# GESTIÓN DE HISTORIAL DE CONVERSACIONES (ESTILO CHATGPT)
+# ==============================================================================
+
+@app.get("/api/sessions")
+def api_get_sessions(limit: int = 50):
+    """Retorna la lista de conversaciones recientes guardadas en SQLite."""
+    sessions = database.get_all_sessions(limit=limit)
+    return {"status": "ok", "sessions": sessions, "count": len(sessions)}
+
+@app.post("/api/sessions")
+def api_create_session(data: Optional[Dict[str, Any]] = None):
+    """Crea una nueva conversación vacía."""
+    payload = data or {}
+    mode = payload.get("mode", "en")
+    voice = payload.get("voice", DEFAULT_ENGLISH_VOICE)
+    title = payload.get("title", "Nueva conversación")
+    session_id = f"sess-{int(time.time())}"
+    database.create_or_get_session(session_id, mode, voice, title=title)
+    return {"status": "ok", "session_id": session_id, "title": title}
+
+@app.get("/api/sessions/{session_id}/messages")
+def api_get_session_messages(session_id: str):
+    """Retorna todos los mensajes de una conversación específica."""
+    msgs = database.get_session_messages(session_id)
+    return {"status": "ok", "session_id": session_id, "messages": msgs, "count": len(msgs)}
+
+@app.put("/api/sessions/{session_id}/title")
+@app.patch("/api/sessions/{session_id}/title")
+def api_update_session_title(session_id: str, data: Dict[str, Any]):
+    """Actualiza el nombre/título de una conversación."""
+    title = data.get("title", "").strip()
+    if not title:
+        return {"status": "error", "message": "El título no puede estar vacío"}
+    success = database.update_session_title(session_id, title)
+    return {"status": "ok" if success else "not_found", "title": title, "session_id": session_id}
+
+@app.delete("/api/sessions/{session_id}")
+def api_delete_session(session_id: str):
+    """Elimina una conversación y sus mensajes de SQLite."""
+    success = database.delete_session(session_id)
+    return {"status": "ok" if success else "not_found", "deleted": success, "session_id": session_id}
+
+@app.post("/api/sessions/{session_id}/generate-title")
+def api_generate_session_title(session_id: str):
+    """Genera un título inteligente con LLaMA 3.2 basado en el contenido de la conversación."""
+    title = database.generate_ai_session_title(session_id)
+    return {"status": "ok", "session_id": session_id, "title": title}
 
 @app.get("/api/personalities")
 async def api_get_personalities():
@@ -227,10 +284,49 @@ async def websocket_chat_endpoint(websocket: WebSocket):
             active_analysis_task.cancel()
             active_analysis_task = None
 
+    async def maybe_auto_title_session(sid: str):
+        try:
+            sess_info = database.get_session_by_id(sid)
+            if sess_info and (not sess_info.get("title") or sess_info.get("title") == "Nueva conversación"):
+                msgs = database.get_session_messages(sid)
+                if len(msgs) >= 2:
+                    loop = asyncio.get_event_loop()
+                    new_title = await loop.run_in_executor(None, database.generate_ai_session_title, sid)
+                    if new_title and new_title != "Nueva conversación":
+                        await websocket.send_json({
+                            "type": "title_generated",
+                            "session_id": sid,
+                            "title": new_title
+                        })
+        except Exception as e:
+            print(f"[AutoTitling Error] {e}")
+
     try:
         while True:
             data = await websocket.receive_json()
             msg_type = data.get("type")
+
+            # 0. Cambio de sesión conversacional (Historial estilo ChatGPT)
+            if msg_type == "switch_session":
+                cancel_background_analysis()
+                target_session_id = data.get("session_id")
+                if target_session_id:
+                    session_id = target_session_id
+                    database.create_or_get_session(session_id, current_mode, current_english_voice)
+                    prev_messages = database.get_session_messages(session_id)
+                    conversation_history = [{"role": "system", "content": get_system_prompt(current_mode, current_personality)}]
+                    for pm in prev_messages[-10:]:
+                        conversation_history.append({"role": pm["role"], "content": pm["content"]})
+                    current_sess = database.get_session_by_id(session_id)
+                    curr_title = current_sess["title"] if current_sess else "Nueva conversación"
+                    print(f"Sesión activa cambiada a: {session_id} ('{curr_title}')")
+                    await websocket.send_json({
+                        "type": "session_switched",
+                        "session_id": session_id,
+                        "title": curr_title,
+                        "messages_count": len(prev_messages)
+                    })
+                continue
 
             # 1. Configuración dinámica de modo de idioma
             if msg_type == "set_mode":
@@ -438,6 +534,7 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                     content=display_text,
                     turn_id=turn_id
                 )
+                asyncio.create_task(maybe_auto_title_session(session_id))
                 conversation_history.append({"role": "user", "content": user_text})
                 conversation_history.append({"role": "assistant", "content": spoken_text})
                 await websocket.send_json({"type": "status", "state": "idle"})
@@ -559,6 +656,7 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                         content=ai_text,
                         turn_id=turn_id
                     )
+                    asyncio.create_task(maybe_auto_title_session(session_id))
 
                     # Análisis pedagógico post-turno (solo modo inglés)
                     if current_mode == "en":

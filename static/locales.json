@@ -54,7 +54,15 @@
     "clear_done": "Historial, notas y vocabulario limpiados.",
     "label_whisper": "🌙 Susurro:",
     "whisper_off": "Desactivado",
-    "whisper_on": "Activado"
+    "whisper_on": "Activado",
+    "response_time": "⏱️ Respuesta en:",
+    "translating": "Traduciendo...",
+    "role_you": "👤 Tú",
+    "role_assistant": "🤖 Asistente",
+    "chats": "Chats",
+    "history_title": "Historial de Conversaciones",
+    "new_chat": "Nueva Conversación",
+    "search_chats": "🔍 Buscar conversaciones..."
   },
   "en": {
     "mode_en": "🇺🇸 Practice English",
@@ -111,7 +119,15 @@
     "clear_done": "History, notes, and vocabulary cleared.",
     "label_whisper": "🌙 Whisper:",
     "whisper_off": "Off",
-    "whisper_on": "Active"
+    "whisper_on": "Active",
+    "response_time": "⏱️ Response in:",
+    "translating": "Translating...",
+    "role_you": "👤 You",
+    "role_assistant": "🤖 Assistant",
+    "chats": "Chats",
+    "history_title": "Conversation History",
+    "new_chat": "New Conversation",
+    "search_chats": "🔍 Search conversations..."
   },
   "pt": {
     "mode_en": "🇺🇸 Praticar Inglês",
@@ -168,7 +184,15 @@
     "clear_done": "Histórico e notas limpos.",
     "label_whisper": "🌙 Sussurro:",
     "whisper_off": "Desligado",
-    "whisper_on": "Ativado"
+    "whisper_on": "Ativado",
+    "response_time": "⏱️ Resposta em:",
+    "translating": "Traduzindo...",
+    "role_you": "👤 Você",
+    "role_assistant": "🤖 Assistente",
+    "chats": "Conversas",
+    "history_title": "Histórico de Conversas",
+    "new_chat": "Nova Conversa",
+    "search_chats": "🔍 Buscar conversas..."
   },
   "fr": {
     "mode_en": "🇺🇸 Pratiquer l'anglais",
@@ -225,7 +249,15 @@
     "clear_done": "Historique et notes effacés.",
     "label_whisper": "🌙 Chuchotement:",
     "whisper_off": "Désactivé",
-    "whisper_on": "Activé"
+    "whisper_on": "Activé",
+    "response_time": "⏱️ Réponse en:",
+    "translating": "Traduction...",
+    "role_you": "👤 Vous",
+    "role_assistant": "🤖 Assistant",
+    "chats": "Discussions",
+    "history_title": "Historique des Conversations",
+    "new_chat": "Nouvelle Conversation",
+    "search_chats": "🔍 Rechercher des conversations..."
   },
   "de": {
     "mode_en": "🇺🇸 Englisch üben",
@@ -282,7 +314,15 @@
     "clear_done": "Verlauf und Notizen gelöscht.",
     "label_whisper": "🌙 Flüstern:",
     "whisper_off": "Aus",
-    "whisper_on": "Aktiv"
+    "whisper_on": "Aktiv",
+    "response_time": "⏱️ Antwort in:",
+    "translating": "Übersetze...",
+    "role_you": "👤 Du",
+    "role_assistant": "🤖 Assistent",
+    "chats": "Chats",
+    "history_title": "Unterhaltungsverlauf",
+    "new_chat": "Neuer Chat",
+    "search_chats": "🔍 Unterhaltungen suchen..."
   },
   "it": {
     "mode_en": "🇺🇸 Pratica l'inglese",
@@ -339,7 +379,15 @@
     "clear_done": "Cronologia e note cancellate.",
     "label_whisper": "🌙 Sussurro:",
     "whisper_off": "Disattivato",
-    "whisper_on": "Attivato"
+    "whisper_on": "Attivato",
+    "response_time": "⏱️ Risposta in:",
+    "translating": "Traduzione...",
+    "role_you": "👤 Tu",
+    "role_assistant": "🤖 Assistente",
+    "chats": "Chat",
+    "history_title": "Cronologia Conversazioni",
+    "new_chat": "Nuova Conversazione",
+    "search_chats": "🔍 Cerca conversazioni..."
   },
   "ja": {
     "mode_en": "🇺🇸 英語の練習",
@@ -396,7 +444,15 @@
     "clear_done": "履歴とメモを削除しました。",
     "label_whisper": "🌙 ささやき:",
     "whisper_off": "オフ",
-    "whisper_on": "オン"
+    "whisper_on": "オン",
+    "response_time": "⏱️ 応答時間:",
+    "translating": "翻訳中...",
+    "role_you": "👤 あなた",
+    "role_assistant": "🤖 アシスタント",
+    "chats": "チャット",
+    "history_title": "会話履歴",
+    "new_chat": "新しい会話",
+    "search_chats": "🔍 会話を検索..."
   },
   "zh": {
     "mode_en": "🇺🇸 练习英语",
@@ -453,6 +509,14 @@
     "clear_done": "历史与备忘已成功清空。",
     "label_whisper": "🌙 耳语模式:",
     "whisper_off": "关闭",
-    "whisper_on": "开启"
+    "whisper_on": "开启",
+    "response_time": "⏱️ 响应时间:",
+    "translating": "翻译中...",
+    "role_you": "👤 你",
+    "role_assistant": "🤖 助手",
+    "chats": "对话",
+    "history_title": "对话历史",
+    "new_chat": "新建对话",
+    "search_chats": "🔍 搜索对话..."
   }
 }

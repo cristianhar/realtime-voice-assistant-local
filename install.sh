@@ -50,3 +50,4 @@ echo -e "\033[1;32m=============================================================
 
 chmod +x launch_voice_assistant.sh
 ./launch_voice_assistant.sh
+

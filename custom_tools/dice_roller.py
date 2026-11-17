@@ -37,3 +37,4 @@ def execute(user_text: str, lang: str = "es") -> str:
     if lang.startswith("es"):
         return f"Tirando un dado de {sides} caras... ¡Salió {val}!"
     return f"Rolling a {sides}-sided die... You got a {val}!"
+

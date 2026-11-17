@@ -11,7 +11,7 @@ import numpy as np
 DB_PATH = os.path.join(os.path.dirname(__file__), "voice_assistant.db")
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15.0)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -19,17 +19,33 @@ def init_db():
     """Inicializa el esquema de SQLite si no existe."""
     with get_connection() as conn:
         cursor = conn.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
         
-        # 1. Tabla de sesiones
+        # 1. Tabla de sesiones (Conversaciones estilo ChatGPT)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
                 id TEXT PRIMARY KEY,
+                title TEXT DEFAULT 'Nueva conversación',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 language_mode TEXT DEFAULT 'en',
                 voice_name TEXT DEFAULT 'af_sarah',
                 total_turns INTEGER DEFAULT 0
             )
         """)
+
+        # Migración segura si la tabla ya existía sin title o updated_at
+        try:
+            cursor.execute("PRAGMA table_info(sessions)")
+            existing_cols = [r["name"] for r in cursor.fetchall()]
+            if "title" not in existing_cols:
+                cursor.execute("ALTER TABLE sessions ADD COLUMN title TEXT DEFAULT 'Nueva conversación'")
+            if "updated_at" not in existing_cols:
+                cursor.execute("ALTER TABLE sessions ADD COLUMN updated_at TIMESTAMP")
+                cursor.execute("UPDATE sessions SET updated_at = created_at WHERE updated_at IS NULL")
+        except Exception as e:
+            print(f"[DB Migration Warning] {e}")
         
         # 2. Tabla de mensajes conversacionales
         cursor.execute("""
@@ -144,18 +160,141 @@ def backfill_note_embeddings():
     except Exception:
         pass
 
-def create_or_get_session(session_id: str, mode: str = "en", voice: str = "af_sarah") -> str:
+def create_or_get_session(session_id: str, mode: str = "en", voice: str = "af_sarah", title: Optional[str] = None) -> str:
     with get_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM sessions WHERE id = ?", (session_id,))
+        cursor.execute("SELECT id, title FROM sessions WHERE id = ?", (session_id,))
         row = cursor.fetchone()
         if not row:
+            sess_title = title or "Nueva conversación"
             cursor.execute(
-                "INSERT INTO sessions (id, language_mode, voice_name) VALUES (?, ?, ?)",
-                (session_id, mode, voice)
+                "INSERT INTO sessions (id, language_mode, voice_name, title, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                (session_id, mode, voice, sess_title)
             )
             conn.commit()
         return session_id
+
+def get_session_by_id(session_id: str) -> Optional[Dict[str, Any]]:
+    """Retorna una sesión por su ID."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, title, language_mode, voice_name, total_turns, created_at, updated_at
+            FROM sessions
+            WHERE id = ?
+        """, (session_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+def get_all_sessions(limit: int = 50) -> List[Dict[str, Any]]:
+    """Retorna todas las sesiones ordenadas por última actualización."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, title, language_mode, voice_name, total_turns, created_at, updated_at
+            FROM sessions
+            ORDER BY COALESCE(updated_at, created_at) DESC
+            LIMIT ?
+        """, (limit,))
+        return [dict(r) for r in cursor.fetchall()]
+
+def get_session_messages(session_id: str) -> List[Dict[str, Any]]:
+    """Retorna todos los mensajes de una sesión ordenados cronológicamente."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, session_id, turn_id, role, content, translation, stt_ms, ttfa_ms, created_at
+            FROM messages
+            WHERE session_id = ?
+            ORDER BY id ASC
+        """, (session_id,))
+        return [dict(r) for r in cursor.fetchall()]
+
+def update_session_title(session_id: str, title: str) -> bool:
+    """Actualiza el título de una conversación y su marca de tiempo."""
+    clean_title = title.strip()
+    if not clean_title:
+        return False
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE sessions
+            SET title = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (clean_title, session_id))
+        conn.commit()
+        return cursor.rowcount > 0
+
+def delete_session(session_id: str) -> bool:
+    """Elimina una conversación y todos sus mensajes asociados."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+        cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+
+def generate_ai_session_title(session_id: str) -> str:
+    """
+    Usa LLaMA 3.2 para generar un título conciso (3-5 palabras) estilo ChatGPT
+    basado en los primeros turnos de la conversación.
+    """
+    messages = get_session_messages(session_id)
+    if not messages:
+        return "Nueva conversación"
+
+    conversation_sample = []
+    for m in messages[:4]:
+        role_label = "Usuario" if m["role"] == "user" else "Asistente"
+        conversation_sample.append(f"{role_label}: {m['content']}")
+
+    context_text = "\n".join(conversation_sample)
+
+    prompt = (
+        "Eres un generador de títulos para ChatGPT. Tu única tarea es generar un título "
+        "ultra-breve (entre 3 y 5 palabras), claro y representativo para la siguiente conversación.\n"
+        "Reglas estrictas:\n"
+        "1. NO uses comillas, NO pongas puntos finales, NO agregues 'Título:', NO expliques nada.\n"
+        "2. Responde exclusivamente con las 3 a 5 palabras del título.\n"
+        "3. Usa el mismo idioma predominante en la conversación.\n\n"
+        f"Conversación:\n{context_text}\n\nTítulo:"
+    )
+
+    try:
+        ollama_url = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+        data = json.dumps({
+            "model": "llama3.2:3b",
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "keep_alive": -1,
+            "options": {"temperature": 0.3, "num_predict": 20}
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            f"{ollama_url}/api/chat",
+            data=data,
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=2.5) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+            raw_title = body.get("message", {}).get("content", "").strip()
+            clean_title = raw_title.replace('"', '').replace("'", '').replace("Título:", "").strip()
+            clean_title = clean_title.split("\n")[0].strip()
+            if clean_title:
+                update_session_title(session_id, clean_title)
+                return clean_title
+    except Exception as e:
+        print(f"[AutoTitling] Fallback al generar título para {session_id}: {e}")
+
+    # Fallback heurístico si Ollama no responde
+    first_user_msg = next((m["content"] for m in messages if m["role"] == "user"), None)
+    fallback_title = "Nueva conversación"
+    if first_user_msg:
+        words = first_user_msg.split()[:5]
+        fallback_title = " ".join(words)
+        if len(first_user_msg.split()) > 5:
+            fallback_title += "..."
+    update_session_title(session_id, fallback_title)
+    return fallback_title
 
 def save_message(session_id: str, role: str, content: str, turn_id: Optional[str] = None,
                  translation: Optional[str] = None, stt_ms: Optional[int] = None,
@@ -168,7 +307,7 @@ def save_message(session_id: str, role: str, content: str, turn_id: Optional[str
         """, (session_id, turn_id, role, content, translation, stt_ms, ttfa_ms))
         msg_id = cursor.lastrowid
         cursor.execute("""
-            UPDATE sessions SET total_turns = total_turns + 1 WHERE id = ?
+            UPDATE sessions SET total_turns = total_turns + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?
         """, (session_id,))
         # Indexar en FTS5 para búsqueda semántica/texto
         try:

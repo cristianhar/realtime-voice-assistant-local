@@ -12,6 +12,11 @@ class AudioPlayerManager {
         this.onPlayStart = options.onPlayStart || (() => {});
         this.onPlayEnd = options.onPlayEnd || (() => {});
         this.onInterrupt = options.onInterrupt || (() => {});
+
+        // Sincronización robusta por turno conversacional
+        this.activeTurnId = null;
+        this.isTurnComplete = false;
+        this.graceTimeout = null;
     }
 
     setPlaybackSpeed(speed) {
@@ -24,8 +29,34 @@ class AudioPlayerManager {
         }
     }
 
-    enqueueAudio(base64Wav) {
+    startTurn(turnId) {
+        if (this.graceTimeout) {
+            clearTimeout(this.graceTimeout);
+            this.graceTimeout = null;
+        }
+        this.activeTurnId = turnId || ("turn-" + Date.now());
+        this.isTurnComplete = false;
+    }
+
+    markTurnComplete(turnId) {
+        if (!turnId || turnId === this.activeTurnId) {
+            this.isTurnComplete = true;
+            if (this.audioQueue.length === 0 && !this.isAudioPlaying) {
+                this.finalizeTurn();
+            }
+        }
+    }
+
+    enqueueAudio(base64Wav, turnId = null) {
         if (!base64Wav) return;
+        if (this.graceTimeout) {
+            clearTimeout(this.graceTimeout);
+            this.graceTimeout = null;
+        }
+        if (turnId && !this.activeTurnId) {
+            this.activeTurnId = turnId;
+        }
+
         const audioObj = new Audio("data:audio/wav;base64," + base64Wav);
         audioObj.preload = "auto";
         this.audioQueue.push(audioObj);
@@ -37,14 +68,28 @@ class AudioPlayerManager {
 
     playNextChunk() {
         if (this.audioQueue.length === 0) {
-            this.isAudioPlaying = false;
-            this.currentAudioElement = null;
-            window.isAudioPlaying = false;
-            if (window.voiceHumanizer) window.voiceHumanizer.resetTurn();
-            this.onPlayEnd();
+            // Si el turno aún está generando audio en streaming, esperar breve ventana de gracia
+            if (!this.isTurnComplete && this.activeTurnId) {
+                if (!this.graceTimeout) {
+                    this.graceTimeout = setTimeout(() => {
+                        this.graceTimeout = null;
+                        if (this.audioQueue.length === 0 && !this.isAudioPlaying) {
+                            this.finalizeTurn();
+                        }
+                    }, 450);
+                }
+                return;
+            }
+            this.finalizeTurn();
             return;
         }
 
+        if (this.graceTimeout) {
+            clearTimeout(this.graceTimeout);
+            this.graceTimeout = null;
+        }
+
+        // Respiración sutil solo al inicio absoluto del turno, nunca entre oraciones consecutivas
         if (!this.isAudioPlaying && window.voiceHumanizer) {
             window.voiceHumanizer.playPreSpeechBreath();
         }
@@ -71,13 +116,33 @@ class AudioPlayerManager {
         });
     }
 
+    finalizeTurn() {
+        if (this.graceTimeout) {
+            clearTimeout(this.graceTimeout);
+            this.graceTimeout = null;
+        }
+        this.isAudioPlaying = false;
+        this.currentAudioElement = null;
+        this.activeTurnId = null;
+        this.isTurnComplete = false;
+        window.isAudioPlaying = false;
+        if (window.voiceHumanizer) window.voiceHumanizer.resetTurn();
+        this.onPlayEnd();
+    }
+
     interrupt() {
+        if (this.graceTimeout) {
+            clearTimeout(this.graceTimeout);
+            this.graceTimeout = null;
+        }
         if (this.currentAudioElement) {
             this.currentAudioElement.pause();
             this.currentAudioElement = null;
         }
         this.audioQueue.length = 0;
         this.isAudioPlaying = false;
+        this.activeTurnId = null;
+        this.isTurnComplete = false;
         window.isAudioPlaying = false;
         if (window.voiceHumanizer) window.voiceHumanizer.resetTurn();
         this.onInterrupt();
@@ -85,4 +150,3 @@ class AudioPlayerManager {
 }
 
 window.AudioPlayerManager = AudioPlayerManager;
-

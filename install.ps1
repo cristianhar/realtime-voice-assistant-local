@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # Realtime Voice Assistant Local - 1-Line Universal Windows Installer
 # Run: irm https://raw.githubusercontent.com/cristianhar/realtime-voice-assistant-local/main/install.ps1 | iex
 # ==============================================================================
@@ -68,3 +68,4 @@ Write-Host "==================================================================" 
 # Iniciar automáticamente
 Write-Host "Iniciando Asistente de Voz..." -ForegroundColor Cyan
 Start-Process "launch_voice_assistant.bat"
+

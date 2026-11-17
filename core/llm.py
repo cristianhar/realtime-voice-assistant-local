@@ -11,9 +11,9 @@ def build_ollama_payload(messages: List[Dict[str, str]], stream: bool = True) ->
         "stream": stream,
         "keep_alive": -1,  # Previene que Ollama descargue los pesos de VRAM
         "options": {
-            "num_ctx": 1024,
+            "num_ctx": 2048,
             "temperature": 0.6,
-            "num_predict": 28
+            "num_predict": 128
         }
     }
 

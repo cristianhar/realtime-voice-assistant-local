@@ -203,17 +203,30 @@ const I18nManager = {
         }
 
         const callBtnText = document.getElementById("call-btn-text");
+        const callModeBtn = document.getElementById("call-mode-btn");
         if (callBtnText) {
             callBtnText.innerText = window.isCallMode ? t.call_btn_stop : t.call_btn_start;
         }
+        if (callModeBtn) {
+            callModeBtn.title = window.isCallMode ? t.call_btn_stop : (t.call_btn_start || "Conversación Ininterrumpida");
+        }
 
         const micBtnLabel = document.getElementById("mic-btn-label");
+        const micBtn = document.getElementById("mic-btn");
         if (micBtnLabel) {
             micBtnLabel.innerText = window.isRecording ? t.mic_btn_listening : t.mic_btn_speak;
         }
+        if (micBtn) {
+            micBtn.title = window.isRecording ? t.mic_btn_listening : (t.mic_btn_speak || "Pulsar para hablar");
+        }
 
         const interruptBtn = document.getElementById("interrupt-btn");
-        if (interruptBtn) interruptBtn.innerText = t.interrupt_btn;
+        if (interruptBtn) {
+            interruptBtn.title = t.interrupt_btn || "Interrumpir a la IA";
+            const srText = interruptBtn.querySelector(".sr-only");
+            if (srText) srText.innerText = t.interrupt_btn;
+            else interruptBtn.innerText = t.interrupt_btn;
+        }
 
         const lMic = document.getElementById("label-mic");
         const lVoice = document.getElementById("label-voice");
@@ -287,6 +300,15 @@ const I18nManager = {
         if (orbLabel && !window.isAudioPlaying && !window.isRecording) {
             orbLabel.innerText = t.orb_ready;
         }
+
+        const btnHistoryText = document.getElementById("btn-history-text");
+        if (btnHistoryText) btnHistoryText.innerText = t.chats || "Chats";
+        const drawerHistoryTitle = document.getElementById("drawer-history-title");
+        if (drawerHistoryTitle) drawerHistoryTitle.innerText = t.history_title || "Historial de Conversaciones";
+        const btnNewChatText = document.getElementById("btn-new-chat-text");
+        if (btnNewChatText) btnNewChatText.innerText = t.new_chat || "Nueva Conversación";
+        const historySearchInput = document.getElementById("history-search-input");
+        if (historySearchInput) historySearchInput.placeholder = t.search_chats || "🔍 Buscar conversaciones...";
     }
 };
 

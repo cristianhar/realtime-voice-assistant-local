@@ -28,9 +28,9 @@
             <div class="header-center">
                 <!-- Selector de Idioma / Modo -->
                 <div class="lang-selector-group">
-                    <button id="btn-mode-en" class="lang-btn active" data-mode="en" title="Tutor de conversación en inglés">🇺🇸 Practicar Inglés</button>
+                    <button id="btn-mode-en" class="lang-btn active" data-mode="en" title="Tutor de conversación en inglés">🇺🇸 English</button>
                     <button id="btn-mode-es" class="lang-btn" data-mode="es" title="Asistente nativo en español">🇪🇸 Español</button>
-                    <button id="btn-mode-auto" class="lang-btn" data-mode="auto" title="Detección automática bilingüe">🌐 Bilingüe / Auto</button>
+                    <button id="btn-mode-auto" class="lang-btn" data-mode="auto" title="Detección automática bilingüe">🌐 Auto</button>
                 </div>
                 <div id="connection-status" class="status-indicator">
                     <span class="dot"></span> <span id="status-text">Conectando...</span>
@@ -51,15 +51,114 @@
                         <option value="zh">🇨🇳 简体中文</option>
                     </select>
                 </div>
-                <span id="user-profile-badge" class="user-badge" title="Perfil activo">👤 Cristian Arboleda</span>
+
+                <!-- Botón de Historial de Conversaciones (Estilo ChatGPT) -->
+                <button id="btn-open-history-drawer" class="history-header-btn" title="Historial de conversaciones (Chats)" aria-label="Historial de conversaciones">
+                    <span class="history-btn-icon">💬</span>
+                    <span id="btn-history-text" class="history-btn-text">Chats</span>
+                    <span id="header-history-counter" class="history-btn-badge">0</span>
+                </button>
+
                 <button id="btn-open-notes-drawer" class="notes-header-btn" title="Ver y gestionar mis notas de voz">
                     <span class="notes-btn-icon">📝</span>
                     <span class="notes-btn-text">Notas</span>
                     <span id="header-notes-counter" class="notes-btn-badge">0</span>
                 </button>
-                <div id="gpu-telemetry-pill" class="gpu-telemetry-pill" title="Telemetría NVIDIA RTX en tiempo real">
-                    <span class="gpu-telemetry-dot"></span>
-                    <span id="gpu-telemetry-label">RTX GPU • --°C</span>
+
+                <!-- Botón de Configuración de Audio y Voz en Header (⚙️) -->
+                <button id="btn-audio-settings" class="settings-header-btn" title="Configuración de Audio, Voz y VAD (⚙️)" aria-label="Ajustes de audio">
+                    <span class="settings-btn-icon">⚙️</span>
+                    <span class="settings-btn-text">Ajustes</span>
+                </button>
+
+                <!-- Botón de Signo de Interrogación (?) para Bienvenida, Guía y Tips -->
+                <div class="header-help-container">
+                    <button id="btn-help-modal" class="header-action-circle-btn help-btn" title="Guía y Bienvenida (?)" aria-label="Guía y bienvenida">
+                        <span class="action-btn-symbol">?</span>
+                    </button>
+
+                    <!-- Popover Flotante de Bienvenida & Consejos -->
+                    <div id="welcome-help-popover" class="welcome-help-popover hidden" role="dialog" aria-labelledby="welcome-title">
+                        <div class="popover-header">
+                            <div class="popover-title">
+                                <span class="popover-badge-icon">👋</span>
+                                <span id="welcome-title" class="help-popover-title">¡Bienvenido a tu Sala de Voz Local!</span>
+                            </div>
+                            <button id="btn-close-help" class="popover-close-btn" title="Cerrar">&times;</button>
+                        </div>
+                        <div class="popover-content">
+                            <p id="welcome-desc" class="help-popover-desc">Habla libremente con naturalidad. Verás la transcripción en vivo palabra por palabra, traducciones, notas guardadas y feedback en tiempo real.</p>
+                            <div class="tips-row">
+                                <span id="tip-1" class="tip-badge">💡 Sin límites de tiempo</span>
+                                <span id="tip-2" class="tip-badge">⚡ 100% Local y privado</span>
+                                <span id="tip-3" class="tip-badge">🎯 Memoria RAG y herramientas</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botón de Símbolo de Admiración (!) para Información del Sistema y Sesión -->
+                <div class="header-info-container">
+                    <button id="btn-info-modal" class="header-action-circle-btn header-exclamation-btn info-btn" title="Información del Sistema, GPU y Sesión (!)" aria-label="Información del sistema">
+                        <span class="action-btn-symbol exclamation-icon">!</span>
+                        <span class="info-pulse-dot"></span>
+                    </button>
+
+                    <!-- Popover Flotante de Información del Sistema -->
+                    <div id="system-info-popover" class="system-info-popover hidden" role="dialog" aria-labelledby="popover-title">
+                        <div class="popover-header">
+                            <div class="popover-title" id="popover-title">
+                                <span class="popover-badge-icon">ℹ️</span>
+                                <span>Información del Asistente</span>
+                            </div>
+                            <button id="btn-close-popover" class="popover-close-btn" title="Cerrar">&times;</button>
+                        </div>
+                        <div class="popover-content">
+                            <!-- Usuario Activo -->
+                            <div class="popover-row">
+                                <span class="popover-row-label">👤 Usuario Activo:</span>
+                                <span id="user-profile-badge" class="user-badge" title="Perfil activo">Cristian Arboleda</span>
+                            </div>
+
+                            <!-- Telemetría GPU NVIDIA RTX -->
+                            <div class="popover-row">
+                                <span class="popover-row-label">⚡ GPU & VRAM:</span>
+                                <div id="gpu-telemetry-pill" class="gpu-telemetry-pill" title="Telemetría NVIDIA RTX en tiempo real">
+                                    <span class="gpu-telemetry-dot"></span>
+                                    <span id="gpu-telemetry-label">RTX GPU • --°C</span>
+                                </div>
+                            </div>
+
+                            <!-- Badges de Arquitectura -->
+                            <div class="popover-row-badges">
+                                <span class="sys-badge local">🔒 100% Offline Local</span>
+                                <span class="sys-badge vram">⚡ RTX 6GB Calibrado</span>
+                                <span class="sys-badge latency">⏱️ Sub-50ms Barge-In</span>
+                            </div>
+
+                            <!-- Guía de Atajos y Uso -->
+                            <div class="popover-guide">
+                                <div class="guide-item">
+                                    <span class="guide-icon">📞</span>
+                                    <div class="guide-text">
+                                        <strong>Modo Ininterrumpido:</strong> Conversación continua sin tocar botones.
+                                    </div>
+                                </div>
+                                <div class="guide-item">
+                                    <span class="guide-icon">🎙️</span>
+                                    <div class="guide-text">
+                                        <strong>Micrófono:</strong> Pulsa para enviar un turno de voz manual.
+                                    </div>
+                                </div>
+                                <div class="guide-item">
+                                    <span class="guide-icon">⏹</span>
+                                    <div class="guide-text">
+                                        <strong>Barge-In:</strong> Habla en cualquier momento para interrumpir a la IA.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>
@@ -82,109 +181,61 @@
 
                 <!-- Historial de Conversación con Doble Transcripción -->
                 <div id="chat-messages" class="chat-messages">
-                    <div class="welcome-card">
-                        <h3 id="welcome-title">👋 ¡Bienvenido a tu Sala de Voz con IA Local!</h3>
-                        <p id="welcome-desc">Habla libremente con naturalidad. Verás la transcripción en vivo palabra por palabra, traducciones, notas guardadas y feedback en tiempo real.</p>
-                        <div class="tips-row">
-                            <span id="tip-1">💡 Sin límites de tiempo</span>
-                            <span id="tip-2">⚡ 100% Local y privado</span>
-                            <span id="tip-3">🎯 Memoria RAG y herramientas</span>
-                        </div>
+                    <div class="chat-empty-hint">
+                        <span>💬 Habla o escribe para comenzar</span>
                     </div>
                 </div>
 
                 <!-- Barra de Entrada y Controles -->
                 <div class="controls-area">
-                    <div class="text-input-bar">
-                        <input type="text" id="text-input" placeholder="Escribe un mensaje o habla por el micrófono..." autocomplete="off">
-                        <button id="send-btn" class="icon-btn" title="Enviar texto">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Modo Llamada Manos Libres y Botones -->
-                    <div class="call-mode-bar">
-                        <button id="call-mode-btn" class="call-mode-button" title="Activa la conversación fluida sin tocar ningún botón">
-                            <span class="call-icon">📞</span>
-                            <span id="call-btn-text">Iniciar Modo Llamada (Manos Libres)</span>
-                        </button>
-                    </div>
-
-                    <!-- Selector de Micrófono, Voz de IA y Sensibilidad -->
-                    <div class="audio-settings-bar">
-                        <div class="setting-item">
-                            <label id="label-mic" for="mic-select">🎤 Mic:</label>
-                            <select id="mic-select" class="mic-select">
-                                <option value="">Cargando micrófonos...</option>
-                            </select>
-                        </div>
-                        <div class="setting-item">
-                            <label id="label-voice" for="voice-select">🗣️ Voz IA:</label>
-                            <select id="voice-select" class="voice-select">
-                                <optgroup label="✨ Voces Híbridas (Voice Blending)">
-                                    <option value="blend_dora_sarah" data-lang="auto">✨ Dora & Sarah (Bilingüe)</option>
-                                    <option value="blend_alex_adam" data-lang="auto">✨ Alex & Adam (Bilingüe)</option>
-                                </optgroup>
-                                <optgroup label="🇪🇸 Español Nativo">
-                                    <option value="ef_dora" data-lang="es">🇪🇸 Dora (Femenina - Cálida)</option>
-                                    <option value="em_alex" data-lang="es">🇪🇸 Alex (Masculino - Claro)</option>
-                                </optgroup>
-                                <optgroup label="🇺🇸 English">
-                                    <option value="af_sarah" data-lang="en">🇺🇸 Sarah (Female - Friendly)</option>
-                                    <option value="am_adam" data-lang="en">🇺🇸 Adam (Male - Deep)</option>
-                                </optgroup>
-                            </select>
-                        </div>
-                        <div class="setting-item">
-                            <label id="label-whisper" for="whisper-btn" title="Modula la voz con tono suave, menor volumen y cadencia relajante">🌙 Susurro:</label>
-                            <button id="whisper-btn" class="whisper-btn" type="button" aria-pressed="false" title="Alternar Modo Susurro">
-                                <span id="whisper-btn-icon">🌙</span>
-                                <span id="whisper-btn-label">Desactivado</span>
+                    <!-- Muelle de Entrada Minimalista (Input integrado + Controles compactos de 36px) -->
+                    <div class="minimal-controls-dock unified-controls-dock">
+                        <div class="minimal-input-wrapper">
+                            <input type="text" id="text-input" placeholder="Escribe un mensaje o habla..." autocomplete="off">
+                            <button id="send-btn" class="minimal-send-btn" title="Enviar texto" aria-label="Enviar texto">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                                </svg>
                             </button>
                         </div>
-                        <div class="setting-item">
-                            <label id="label-personality" for="personality-select">🎭 Personalidad:</label>
-                            <select id="personality-select" class="personality-select">
-                                <option value="coach" selected>🎓 Tutor de Idiomas</option>
-                                <option value="friendly">🤗 Amigo Casual</option>
-                                <option value="tech">💻 Senior Tech Lead</option>
-                                <option value="executive">👔 Mentor Ejecutivo</option>
-                                <option value="interviewer">💼 Entrevistador Técnico / IELTS</option>
-                            </select>
-                        </div>
-                        <div class="setting-item">
-                            <label id="label-speed" for="speed-select" title="Velocidad del habla de la IA">⏩ Velocidad:</label>
-                            <select id="speed-select" class="speed-select" title="Velocidad de reproducción de audio">
-                                <option value="0.85">0.85x (Pausado)</option>
-                                <option value="1.0" selected>1.0x (Normal)</option>
-                                <option value="1.15">1.15x (Fluido)</option>
-                                <option value="1.25">1.25x (Rápido)</option>
-                            </select>
-                        </div>
-                        <div class="setting-item">
-                            <label id="label-vad" for="vad-select" title="Filtra respiraciones y ruidos de fondo">🎚️ Filtro VAD:</label>
-                            <select id="vad-select" class="vad-select" title="Sensibilidad del micrófono">
-                                <option id="opt-vad-low" value="0.045">Baja (Filtra respiración fuerte y ventilador)</option>
-                                <option id="opt-vad-med" value="0.030" selected>Media (Recomendada)</option>
-                                <option id="opt-vad-high" value="0.018">Alta (Habla muy suave)</option>
-                            </select>
-                        </div>
-                    </div>
 
-                    <div class="voice-buttons-bar">
-                        <button id="mic-btn" class="mic-button" title="Haz clic para hablar o mantén presionado">
-                            <svg class="mic-icon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-                                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                            </svg>
-                            <span id="mic-btn-label">Pulsar para hablar</span>
-                        </button>
+                        <!-- Cluster de Acciones Minimalistas -->
+                        <div class="minimal-actions-cluster voice-actions-dock">
+                            <!-- Botón 1: Conversación Ininterrumpida (Manos Libres) -->
+                            <button id="call-mode-btn" class="call-mode-button icon-action-btn minimal-action-btn" title="Conversación Ininterrumpida (Manos Libres)" aria-label="Conversación ininterrumpida">
+                                <svg class="action-svg call-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                    <path d="M14 2a8 8 0 0 1 8 8" class="wave-outer"/>
+                                    <path d="M14 6a4 4 0 0 1 4 4" class="wave-inner"/>
+                                </svg>
+                                <span id="call-btn-text" class="sr-only">Iniciar Modo Llamada</span>
+                            </button>
 
-                        <button id="interrupt-btn" class="interrupt-button hidden" title="Interrumpir a la IA">
-                            ⏹ Interrumpir
-                        </button>
+                            <!-- Botón 2: Micrófono (Capturar / Enviar Audio Manual) -->
+                            <button id="mic-btn" class="mic-button icon-action-btn minimal-action-btn" title="Pulsar para hablar (capturar audio)" aria-label="Pulsar para hablar">
+                                <svg class="action-svg mic-svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                                </svg>
+                                <span id="mic-btn-label" class="sr-only">Pulsar para hablar</span>
+                            </button>
+
+                            <!-- Botón 3: Interrumpir (Barge-In) -->
+                            <button id="interrupt-btn" class="interrupt-button icon-action-btn minimal-action-btn hidden" title="Interrumpir a la IA (Barge-In)" aria-label="Interrumpir a la IA">
+                                <svg class="action-svg stop-svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                                    <rect x="5" y="5" width="14" height="14" rx="2"/>
+                                </svg>
+                                <span class="sr-only">Interrumpir</span>
+                            </button>
+
+                            <!-- Botón 4: Ajustes Rápidos de Audio (Icono ⚙️) -->
+                            <button id="btn-dock-settings" class="settings-dock-btn icon-action-btn minimal-action-btn" title="Configurar Audio, Voces y VAD (⚙️)" aria-label="Ajustes de audio">
+                                <svg class="action-svg settings-svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                    <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                                </svg>
+                                <span class="sr-only">Ajustes</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Indicador visual de volumen de micrófono en tiempo real -->
@@ -269,6 +320,33 @@
         </main>
     </div>
 
+    <!-- Slide-over Drawer de Historial de Conversaciones (Estilo ChatGPT) -->
+    <div id="history-drawer-overlay" class="drawer-overlay"></div>
+    <aside id="history-drawer" class="history-drawer">
+        <div class="drawer-header">
+            <div class="drawer-title-group">
+                <span class="drawer-icon">💬</span>
+                <h3 id="drawer-history-title" class="drawer-title">Historial de Conversaciones</h3>
+            </div>
+            <button id="btn-close-history-drawer" class="drawer-close-btn" title="Cerrar">&times;</button>
+        </div>
+
+        <div class="history-drawer-toolbar">
+            <button id="btn-new-chat-drawer" class="btn-new-chat-action" title="Iniciar una nueva conversación">
+                <span class="new-chat-icon">➕</span>
+                <span id="btn-new-chat-text" class="new-chat-text">Nueva Conversación</span>
+            </button>
+            <div class="history-search-wrapper">
+                <input type="text" id="history-search-input" class="history-search-box" placeholder="🔍 Buscar conversaciones...">
+            </div>
+        </div>
+
+        <!-- Lista de Tarjetas de Conversaciones -->
+        <div id="history-cards-container" class="history-cards-container">
+            <div class="history-loading">Cargando conversaciones...</div>
+        </div>
+    </aside>
+
     <!-- Slide-over Drawer de Gestión de Notas de Voz -->
     <div id="notes-drawer-overlay" class="drawer-overlay"></div>
     <aside id="notes-drawer" class="notes-drawer">
@@ -307,6 +385,108 @@
         </div>
     </aside>
 
+    <!-- Modal de Configuración de Audio y Voz (Desacoplado de la vista principal) -->
+    <div id="settings-modal-overlay" class="settings-modal-overlay hidden">
+        <div id="settings-modal" class="settings-modal" role="dialog" aria-labelledby="settings-title">
+            <div class="settings-modal-header">
+                <div class="settings-modal-title" id="settings-title">
+                    <span class="settings-modal-icon">⚙️</span>
+                    <span>Ajustes de Audio & Voz IA</span>
+                </div>
+                <button id="btn-close-settings" class="modal-close-btn" title="Cerrar">&times;</button>
+            </div>
+
+            <div class="settings-modal-body">
+                <!-- Sección 1: Micrófono y Detección de Voz (VAD) -->
+                <div class="settings-card-group">
+                    <div class="group-header">
+                        <span class="group-icon">🎤</span>
+                        <h5 class="group-title">Entrada & Filtro Vocal (VAD)</h5>
+                    </div>
+                    <div class="setting-field">
+                        <label id="label-mic" for="mic-select" class="field-label">Dispositivo de Micrófono:</label>
+                        <select id="mic-select" class="field-select">
+                            <option value="">Cargando micrófonos...</option>
+                        </select>
+                    </div>
+                    <div class="setting-field">
+                        <label id="label-vad" for="vad-select" class="field-label">Filtro de Ruido & Sensibilidad:</label>
+                        <select id="vad-select" class="field-select" title="Sensibilidad del micrófono">
+                            <option id="opt-vad-low" value="0.045">Baja (Filtra respiración fuerte y ventilador)</option>
+                            <option id="opt-vad-med" value="0.030" selected>Media (Recomendada)</option>
+                            <option id="opt-vad-high" value="0.018">Alta (Habla muy suave)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Sección 2: Voz IA y Síntesis Kokoro -->
+                <div class="settings-card-group">
+                    <div class="group-header">
+                        <span class="group-icon">🗣️</span>
+                        <h5 class="group-title">Síntesis Vocal (Kokoro-82M)</h5>
+                    </div>
+                    <div class="setting-field">
+                        <label id="label-voice" for="voice-select" class="field-label">Voz de la IA:</label>
+                        <select id="voice-select" class="field-select">
+                            <optgroup label="✨ Voces Híbridas (Voice Blending)">
+                                <option value="blend_dora_sarah" data-lang="auto">✨ Dora & Sarah (Bilingüe)</option>
+                                <option value="blend_alex_adam" data-lang="auto">✨ Alex & Adam (Bilingüe)</option>
+                            </optgroup>
+                            <optgroup label="🇪🇸 Español Nativo">
+                                <option value="ef_dora" data-lang="es">🇪🇸 Dora (Femenina - Cálida)</option>
+                                <option value="em_alex" data-lang="es">🇪🇸 Alex (Masculino - Claro)</option>
+                            </optgroup>
+                            <optgroup label="🇺🇸 English">
+                                <option value="af_sarah" data-lang="en">🇺🇸 Sarah (Female - Friendly)</option>
+                                <option value="am_adam" data-lang="en">🇺🇸 Adam (Male - Deep)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="setting-field-grid">
+                        <div class="setting-field">
+                            <label id="label-speed" for="speed-select" class="field-label">Velocidad del Habla:</label>
+                            <select id="speed-select" class="field-select" title="Velocidad de reproducción de audio">
+                                <option value="0.85">0.85x (Pausado)</option>
+                                <option value="1.0" selected>1.0x (Normal)</option>
+                                <option value="1.15">1.15x (Fluido)</option>
+                                <option value="1.25">1.25x (Rápido)</option>
+                            </select>
+                        </div>
+                        <div class="setting-field">
+                            <label id="label-whisper" for="whisper-btn" class="field-label">Modo Susurro:</label>
+                            <button id="whisper-btn" class="whisper-btn" type="button" aria-pressed="false" title="Alternar Modo Susurro">
+                                <span id="whisper-btn-icon">🌙</span>
+                                <span id="whisper-btn-label">Desactivado</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 3: Personalidad del Asistente -->
+                <div class="settings-card-group">
+                    <div class="group-header">
+                        <span class="group-icon">🎭</span>
+                        <h5 class="group-title">Personalidad & Rol del LLM</h5>
+                    </div>
+                    <div class="setting-field">
+                        <label id="label-personality" for="personality-select" class="field-label">Perfil de Interacción:</label>
+                        <select id="personality-select" class="field-select">
+                            <option value="coach" selected>🎓 Tutor de Idiomas</option>
+                            <option value="friendly">🤗 Amigo Casual</option>
+                            <option value="tech">💻 Senior Tech Lead</option>
+                            <option value="executive">👔 Mentor Ejecutivo</option>
+                            <option value="interviewer">💼 Entrevistador Técnico / IELTS</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-modal-footer">
+                <button id="btn-save-settings" class="settings-modal-done-btn">Listo</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/js/i18n.js"></script>
     <script src="/static/js/earcons.js"></script>
     <script src="/static/js/humanizer.js"></script>
@@ -315,6 +495,7 @@
     <script src="/static/js/audio-player.js"></script>
     <script src="/static/js/audio-recorder.js"></script>
     <script src="/static/js/chat-ui.js"></script>
+    <script src="/static/js/history-drawer.js"></script>
     <script src="/static/js/notes-drawer.js"></script>
     <script src="/static/js/telemetry.js"></script>
     <script src="/static/app.js"></script>
