@@ -16,6 +16,13 @@ def run_all_e2e_and_unit_tests():
     print("  EJECUTANDO SUITE COMPLETA DE PRUEBAS END-TO-END Y UNITARIAS")
     print("=" * 70)
 
+    # Aislar la base de datos para pruebas y proteger la base de datos real voice_assistant.db
+    test_db_path = os.path.join(PROJECT_ROOT, "test_voice_assistant.db")
+    os.environ["VOICE_ASSISTANT_DB_PATH"] = test_db_path
+
+    import database
+    database.init_db()
+
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
 
@@ -47,7 +54,20 @@ def run_all_e2e_and_unit_tests():
     print("-" * 70)
     runner = unittest.TextTestRunner(verbosity=2)
     start_time = time.time()
-    result = runner.run(suite)
+    try:
+        result = runner.run(suite)
+    finally:
+        # Limpieza de base de datos de prueba
+        if "VOICE_ASSISTANT_DB_PATH" in os.environ:
+            del os.environ["VOICE_ASSISTANT_DB_PATH"]
+        for ext in ["", "-wal", "-shm"]:
+            fpath = test_db_path + ext
+            if os.path.exists(fpath):
+                try:
+                    os.remove(fpath)
+                except Exception:
+                    pass
+
     duration = time.time() - start_time
 
     print("=" * 70)

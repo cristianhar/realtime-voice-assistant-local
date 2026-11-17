@@ -8,10 +8,11 @@ import threading
 from typing import List, Dict, Optional, Any
 import numpy as np
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "voice_assistant.db")
+DB_PATH = os.environ.get("VOICE_ASSISTANT_DB_PATH", os.path.join(os.path.dirname(__file__), "voice_assistant.db"))
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH, timeout=15.0)
+    current_db = os.environ.get("VOICE_ASSISTANT_DB_PATH", DB_PATH)
+    conn = sqlite3.connect(current_db, timeout=15.0)
     conn.row_factory = sqlite3.Row
     return conn
 

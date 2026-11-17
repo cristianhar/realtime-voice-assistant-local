@@ -220,38 +220,50 @@ def detect_and_execute_tool(text: str, lang_mode: str = "es") -> Optional[Dict[s
         }
 
     # 2. TOOL: Guardar Nota de Voz / Recordatorio
-    # Ejemplos: "Toma nota de comprar café", "Recuérdame llamar al médico", "Take a note buy coffee"
+    # Comandos explícitos e intencionales para evitar falsos positivos conversacionales (ej: "Remember that...", "Noté que...")
     note_patterns = [
-        r'^(toma\s+nota\s+(?:de|que)?|apunta\s+(?:que)?|recu[eé]rdame\s+(?:que)?|guarda\s+(?:una\s+)?nota\s+(?:de|que)?|anota\s+(?:que)?|nota\s*:?)\s+(.+)$',
-        r'^(take\s+a\s+note\s*(?:that|:|to)?|remember\s+(?:that|to)?|save\s+a\s+note\s*(?:that|:)?)\s+(.+)$'
+        r'^(toma\s+nota\s+(?:de|que)?|apunta\s+(?:que)?|recu[eé]rdame\s+(?:que|de)?|guarda\s+(?:una\s+)?nota\s+(?:de|que)?|anota\s+(?:que)?)\s+(.+)$',
+        r'^(take\s+a\s+note\s*(?:that|to)?|remind\s+me\s+to|save\s+a\s+note\s*(?:that)?)\s+(.+)$'
     ]
-    
-    for pat in note_patterns:
-        m = re.match(pat, clean_no_punct)
-        if m:
-            content = m.group(2).strip()
-            if len(content) >= 3:
-                # Extraer título y contenido
-                is_spanish = "take a note" not in m.group(1) and "remember" not in m.group(1) and "save a note" not in m.group(1)
-                title = f"Nota: {content[:25]}..." if len(content) > 25 else f"Nota: {content}"
-                note_id = database.save_voice_note(content=content, title=title)
-                
-                if is_spanish or lang_mode == "es":
-                    spoken = f"He guardado tu nota: {content}. ¿Deseas hacer algo más?"
-                    display = f"📌 Nota #{note_id} guardada: \"{content}\""
-                    lang = "es"
-                else:
-                    spoken = f"Got it, I saved your note: {content}. Anything else?"
-                    display = f"📌 Note #{note_id} saved: \"{content}\""
-                    lang = "en"
-                    
-                return {
-                    "tool": "save_voice_note",
-                    "spoken_response": spoken,
-                    "display_response": display,
-                    "lang": lang,
-                    "data": {"note_id": note_id, "content": content}
-                }
+
+    # También soportar formato con dos puntos explícitos: "Nota: comprar pan" o "Note: buy milk"
+    colon_match = re.match(r'^(?:nota|note)\s*:\s*(.+)$', text.strip(), re.IGNORECASE)
+    matched_content = None
+    is_spanish_note = True
+
+    if colon_match:
+        matched_content = colon_match.group(1).strip()
+        is_spanish_note = not text.strip().lower().startswith("note:")
+    else:
+        for pat in note_patterns:
+            m = re.match(pat, clean_no_punct)
+            if m:
+                matched_content = m.group(2).strip()
+                prefix = m.group(1).lower()
+                is_spanish_note = "take a note" not in prefix and "remind me" not in prefix and "save a note" not in prefix
+                break
+
+    if matched_content and len(matched_content) >= 3:
+        content = matched_content
+        title = f"Nota: {content[:25]}..." if len(content) > 25 else f"Nota: {content}"
+        note_id = database.save_voice_note(content=content, title=title)
+
+        if is_spanish_note or lang_mode == "es":
+            spoken = f"He guardado tu nota: {content}. ¿Deseas hacer algo más?"
+            display = f"📌 Nota #{note_id} guardada: \"{content}\""
+            lang = "es"
+        else:
+            spoken = f"Got it, I saved your note: {content}. Anything else?"
+            display = f"📌 Note #{note_id} saved: \"{content}\""
+            lang = "en"
+
+        return {
+            "tool": "save_voice_note",
+            "spoken_response": spoken,
+            "display_response": display,
+            "lang": lang,
+            "data": {"note_id": note_id, "content": content}
+        }
 
     # 3. TOOL: Listar / Leer Notas de Voz
     list_notes_patterns_es = [
