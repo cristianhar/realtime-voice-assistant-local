@@ -12,13 +12,13 @@ curl -s http://127.0.0.1:11434/api/tags >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo [!] Iniciando servicio Ollama en segundo plano...
     start "" /B ollama serve
-    timeout /t 3 >nul
+    timeout /t 4 >nul
 )
 
-echo [✓] Iniciando servidor FastAPI en http://127.0.0.1:8000 ...
-echo [✓] Abre tu navegador en: http://127.0.0.1:8000
-start http://127.0.0.1:8000
+echo [✓] Iniciando servidor HTTPS en https://localhost:8000 (Multi-dispositivo)...
+echo [✓] Abriendo navegador en: https://localhost:8000
+start https://localhost:8000
 
-.\venv\Scripts\python.exe server.py
+.\venv\Scripts\python.exe server.py --https --host 0.0.0.0 --port 8000
 pause
 
