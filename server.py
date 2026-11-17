@@ -4,6 +4,7 @@ import time
 import json
 import base64
 import asyncio
+import threading
 import urllib.request
 import urllib.parse
 from contextlib import asynccontextmanager
@@ -276,13 +277,57 @@ async def websocket_chat_endpoint(websocket: WebSocket):
     current_generation_id = 0
     is_interrupted = False
     active_analysis_task: Optional[asyncio.Task] = None
+    active_turn_task: Optional[asyncio.Task] = None
+    active_stream_response = None
+    active_cancel_event: Optional[threading.Event] = None
     stt_busy = False
+    ws_send_lock = asyncio.Lock()
+
+    async def safe_send_json(payload: dict):
+        """Envío thread-safe / coroutine-safe garantizado sobre el WebSocket."""
+        try:
+            async with ws_send_lock:
+                await websocket.send_json(payload)
+        except Exception:
+            pass
 
     def cancel_background_analysis():
         nonlocal active_analysis_task
         if active_analysis_task and not active_analysis_task.done():
             active_analysis_task.cancel()
             active_analysis_task = None
+
+    def cancel_active_turn():
+        """
+        Barge-in instantáneo (<10ms):
+        1. Invalida generation_id y marca is_interrupted.
+        2. Cierra inmediatamente el socket HTTP de streaming con Ollama (abort en caliente).
+        3. Detiene el hilo de lectura del stream.
+        4. Cancela la tarea asyncio de generación y síntesis de audio TTS en curso.
+        """
+        nonlocal active_turn_task, active_stream_response, active_cancel_event, is_interrupted, current_generation_id
+        is_interrupted = True
+        current_generation_id += 1
+        cancel_background_analysis()
+
+        if active_cancel_event:
+            try:
+                active_cancel_event.set()
+            except Exception:
+                pass
+
+        if active_stream_response:
+            try:
+                active_stream_response.close()
+            except Exception:
+                pass
+
+        if active_turn_task and not active_turn_task.done():
+            active_turn_task.cancel()
+
+        active_turn_task = None
+        active_stream_response = None
+        active_cancel_event = None
 
     async def maybe_auto_title_session(sid: str):
         try:
@@ -293,7 +338,7 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                     loop = asyncio.get_event_loop()
                     new_title = await loop.run_in_executor(None, database.generate_ai_session_title, sid)
                     if new_title and new_title != "Nueva conversación":
-                        await websocket.send_json({
+                        await safe_send_json({
                             "type": "title_generated",
                             "session_id": sid,
                             "title": new_title
@@ -301,192 +346,57 @@ async def websocket_chat_endpoint(websocket: WebSocket):
         except Exception as e:
             print(f"[AutoTitling Error] {e}")
 
-    try:
-        while True:
-            data = await websocket.receive_json()
-            msg_type = data.get("type")
+    async def execute_turn_pipeline(u_text: str, t_id: str, gen_id: int, det_lang: str, stt_ms: int):
+        """
+        Pipeline desacoplado no bloqueante para el turno de la IA:
+        Permite que el loop principal siga escuchando el WebSocket en todo momento (Full-Duplex / Barge-in).
+        """
+        nonlocal is_whisper_mode, conversation_history, active_stream_response, active_cancel_event, active_analysis_task
+        loop = asyncio.get_running_loop()
+        spoken_sentences: List[str] = []
+        full_ai_response: List[str] = []
+        res = None
+        cancel_event = None
+        tts_consumer_task: Optional[asyncio.Task] = None
 
-            # 0. Cambio de sesión conversacional (Historial estilo ChatGPT)
-            if msg_type == "switch_session":
-                cancel_background_analysis()
-                target_session_id = data.get("session_id")
-                if target_session_id:
-                    session_id = target_session_id
-                    current_sess = database.get_session_by_id(session_id)
-                    if current_sess:
-                        prev_messages = database.get_session_messages(session_id)
-                        curr_title = current_sess.get("title") or "Nueva conversación"
-                    else:
-                        prev_messages = []
-                        curr_title = "Nueva conversación"
-
-                    conversation_history = [{"role": "system", "content": get_system_prompt(current_mode, current_personality)}]
-                    for pm in prev_messages[-10:]:
-                        conversation_history.append({"role": pm["role"], "content": pm["content"]})
-                    print(f"Sesión activa cambiada a: {session_id} ('{curr_title}')")
-                    await websocket.send_json({
-                        "type": "session_switched",
-                        "session_id": session_id,
-                        "title": curr_title,
-                        "messages_count": len(prev_messages)
-                    })
-                continue
-
-            # 1. Configuración dinámica de modo de idioma
-            if msg_type == "set_mode":
-                cancel_background_analysis()
-                new_mode = data.get("mode", "en")
-                if new_mode in ["en", "es", "auto"]:
-                    current_mode = new_mode
-                    conversation_history = [{"role": "system", "content": get_system_prompt(current_mode, current_personality)}]
-                    print(f"Modo cambiado a: {current_mode} (personalidad: {current_personality})")
-                    await websocket.send_json({"type": "mode_changed", "mode": current_mode})
-                continue
-
-            # 2. Configuración dinámica de personalidad conversacional
-            if msg_type == "set_personality":
-                cancel_background_analysis()
-                new_personality = data.get("personality", DEFAULT_PERSONALITY)
-                if new_personality in PERSONALITIES:
-                    current_personality = new_personality
-                    conversation_history = [{"role": "system", "content": get_system_prompt(current_mode, current_personality)}]
-                    print(f"Personalidad cambiada a: {current_personality}")
-                    await websocket.send_json({"type": "personality_changed", "personality": current_personality})
-                continue
-
-            # Configuración dinámica de Modo Susurro (Whisper Mode)
-            if msg_type == "set_whisper_mode":
-                is_whisper_mode = bool(data.get("enabled", False))
-                print(f"Modo Susurro: {'ACTIVADO' if is_whisper_mode else 'DESACTIVADO'}")
-                await websocket.send_json({"type": "whisper_mode_changed", "enabled": is_whisper_mode})
-                continue
-
-            # 2. Configuración dinámica de voces (soporte de voces nativas y Voice Blending híbrido)
-            if msg_type == "set_voice":
-                new_voice = data.get("voice", "")
-                if new_voice:
-                    if new_voice in VOICE_BLENDS or "blend" in new_voice:
-                        current_spanish_voice = new_voice
-                        current_english_voice = new_voice
-                    elif new_voice.startswith("e"):
-                        current_spanish_voice = new_voice
-                    else:
-                        current_english_voice = new_voice
-                    print(f"Voz configurada -> ES: {current_spanish_voice}, EN: {current_english_voice}")
-                    await websocket.send_json({
-                        "type": "voice_changed",
-                        "spanish_voice": current_spanish_voice,
-                        "english_voice": current_english_voice
-                    })
-                continue
-
-            # 3. Interrupción instantánea (Barge-in)
-            if msg_type == "interrupt":
-                print("⚡ Interrupción recibida del cliente (Barge-in).")
-                cancel_background_analysis()
-                is_interrupted = True
-                current_generation_id += 1
-                await websocket.send_json({"type": "interrupted"})
-                continue
-
-            user_text = ""
-            stt_latency = 0
-            detected_lang = "en"
-            turn_id = data.get("turn_id") or f"turn-{int(time.time() * 1000)}"
-
-            # 4. Transcripción parcial en vivo (Live Streaming STT)
-            if msg_type == "audio_partial":
-                if stt_busy:
-                    continue
-                cancel_background_analysis()
-                audio_base64 = data.get("audio", "")
-                if not audio_base64:
-                    continue
-                audio_bytes = base64.b64decode(audio_base64)
-                loop = asyncio.get_running_loop()
-                try:
-                    stt_busy = True
-                    partial_text, _, detected_lang = await loop.run_in_executor(
-                        thread_pool, transcribe_audio_bytes, stt_model, audio_bytes, current_mode
-                    )
-                    if partial_text:
-                        await websocket.send_json({
-                            "type": "user_partial_transcription",
-                            "text": partial_text,
-                            "lang": detected_lang
-                        })
-                finally:
-                    stt_busy = False
-                continue
-
-            # 5. Audio final del turno (activado por 650 ms de silencio en VAD)
-            if msg_type in ["audio", "audio_final"]:
-                cancel_background_analysis()
-                audio_base64 = data.get("audio", "")
-                if not audio_base64:
-                    continue
-                audio_bytes = base64.b64decode(audio_base64)
-                await websocket.send_json({"type": "status", "state": "transcribing"})
-
-                loop = asyncio.get_running_loop()
-                try:
-                    stt_busy = True
-                    user_text, stt_latency, detected_lang = await loop.run_in_executor(
-                        thread_pool, transcribe_audio_bytes, stt_model, audio_bytes, current_mode
-                    )
-                finally:
-                    stt_busy = False
-
-                if not user_text:
-                    await websocket.send_json({"type": "status", "state": "idle"})
-                    continue
-
-            elif msg_type == "text":
-                cancel_background_analysis()
-                user_text = data.get("text", "").strip()
-                if not user_text:
-                    continue
-                detected_lang = "es" if is_text_spanish(user_text) else "en"
-
-            # Enviar transcripción final al cliente
-            await websocket.send_json({
+        try:
+            # 1. Enviar transcripción final confirmada del usuario
+            await safe_send_json({
                 "type": "user_transcription",
-                "turn_id": turn_id,
-                "text": user_text,
-                "stt_ms": stt_latency,
-                "lang": detected_lang
+                "turn_id": t_id,
+                "text": u_text,
+                "stt_ms": stt_ms,
+                "lang": det_lang
             })
 
-            # Persistir mensaje del usuario en SQLite (Lazy session creation)
+            # 2. Persistir mensaje del usuario en SQLite (Lazy session creation)
             database.create_or_get_session(session_id, current_mode, current_english_voice)
             database.save_message(
                 session_id=session_id,
                 role="user",
-                content=user_text,
-                turn_id=turn_id,
-                stt_ms=stt_latency
+                content=u_text,
+                turn_id=t_id,
+                stt_ms=stt_ms
             )
 
-            # Detección automática de intención de Modo Susurro
+            # 3. Detección automática de intención de Modo Susurro
             whisper_on_triggers = ["susurra", "modo susurro", "habla suave", "habla bajito", "whisper", "night mode", "modo noche", "tono suave"]
             whisper_off_triggers = ["voz normal", "desactiva susurro", "normal voice", "disable whisper", "habla fuerte", "apaga susurro"]
-            user_lower = user_text.lower()
+            user_lower = u_text.lower()
             if any(wt in user_lower for wt in whisper_on_triggers) and not is_whisper_mode:
                 is_whisper_mode = True
-                await websocket.send_json({"type": "whisper_mode_changed", "enabled": True})
+                await safe_send_json({"type": "whisper_mode_changed", "enabled": True})
             elif any(wt in user_lower for wt in whisper_off_triggers) and is_whisper_mode:
                 is_whisper_mode = False
-                await websocket.send_json({"type": "whisper_mode_changed", "enabled": False})
+                await safe_send_json({"type": "whisper_mode_changed", "enabled": False})
 
-            current_generation_id += 1
-            gen_id = current_generation_id
-            is_interrupted = False
-            loop = asyncio.get_running_loop()
+            if is_interrupted or gen_id != current_generation_id:
+                return
 
             # -----------------------------------------------------------------
-            # TOOL CALLING DIRECTO (Zero-Latency Local Tools: Hora, Notas, Vocabulario)
+            # 4. TOOL CALLING DIRECTO (Zero-Latency Local Tools: Hora, Notas, Vocabulario)
             # -----------------------------------------------------------------
-            tool_result = tools.detect_and_execute_tool(user_text, current_mode)
+            tool_result = tools.detect_and_execute_tool(u_text, current_mode)
             if tool_result:
                 spoken_text = tool_result["spoken_response"]
                 display_text = tool_result["display_response"]
@@ -494,9 +404,9 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                 tool_lang = tool_result["lang"]
                 print(f"🔧 Tool ejecutada: {tool_name} -> \"{spoken_text}\"")
 
-                await websocket.send_json({
+                await safe_send_json({
                     "type": "tool_executed",
-                    "turn_id": turn_id,
+                    "turn_id": t_id,
                     "tool": tool_name,
                     "display_text": display_text,
                     "display_response": display_text,
@@ -504,7 +414,7 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                     "data": tool_result.get("data", {})
                 })
 
-                await websocket.send_json({"type": "status", "state": "speaking"})
+                await safe_send_json({"type": "status", "state": "speaking"})
 
                 # Síntesis TTS directa ultra-rápida (TTFA ~200ms sin esperar al LLM)
                 tool_voice = current_spanish_voice if tool_lang == "es" else current_english_voice
@@ -513,23 +423,22 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                 )
 
                 if audio_b64 and not is_interrupted and gen_id == current_generation_id:
-                    await websocket.send_json({
+                    await safe_send_json({
                         "type": "audio_chunk",
-                        "turn_id": turn_id,
+                        "turn_id": t_id,
                         "audio": audio_b64,
                         "text": spoken_text
                     })
 
-                # Proyectar el texto en la burbuja de la IA en pantalla
-                await websocket.send_json({
+                await safe_send_json({
                     "type": "ai_chunk",
-                    "turn_id": turn_id,
+                    "turn_id": t_id,
                     "delta": spoken_text
                 })
 
-                await websocket.send_json({
+                await safe_send_json({
                     "type": "ai_done",
-                    "turn_id": turn_id,
+                    "turn_id": t_id,
                     "full_text": display_text or spoken_text
                 })
 
@@ -537,23 +446,23 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                     session_id=session_id,
                     role="assistant",
                     content=display_text,
-                    turn_id=turn_id
+                    turn_id=t_id
                 )
                 asyncio.create_task(maybe_auto_title_session(session_id))
-                conversation_history.append({"role": "user", "content": user_text})
+                conversation_history.append({"role": "user", "content": u_text})
                 conversation_history.append({"role": "assistant", "content": spoken_text})
-                await websocket.send_json({"type": "status", "state": "idle"})
-                continue
+                await safe_send_json({"type": "status", "state": "idle"})
+                return
 
             # -----------------------------------------------------------------
-            # TURNO CONVERSACIONAL CON LLM (Prioridad Absoluta de GPU)
+            # 5. TURNO CONVERSACIONAL CON LLM (Prioridad Absoluta de GPU)
             # -----------------------------------------------------------------
-            conversation_history.append({"role": "user", "content": user_text})
+            conversation_history.append({"role": "user", "content": u_text})
             if len(conversation_history) > 9:
                 conversation_history = [conversation_history[0]] + conversation_history[-8:]
 
             # Inyectar memoria persistente ultraligera (RAG híbrido de notas, perfil y FTS5)
-            memory_block = database.get_smart_memory_context(user_text)
+            memory_block = database.get_smart_memory_context(u_text)
             whisper_prompt = "\n[INSTRUCCIÓN MODO SUSURRO: Responde con tono íntimo, muy suave, relajante y oraciones concisas y tranquilas.]" if is_whisper_mode else ""
             current_system_prompt = get_system_prompt(current_mode, current_personality) + whisper_prompt + (f"\n{memory_block}" if memory_block else "")
 
@@ -561,7 +470,7 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                 m for m in conversation_history if m.get("role") != "system"
             ]
 
-            await websocket.send_json({"type": "status", "state": "thinking"})
+            await safe_send_json({"type": "status", "state": "thinking"})
 
             # Cola Asíncrona Producer-Consumer para Gapless TTS
             tts_queue: asyncio.Queue = asyncio.Queue()
@@ -583,9 +492,10 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                     )
 
                     if audio_b64 and gen_id == current_generation_id and not is_interrupted:
-                        await websocket.send_json({
+                        spoken_sentences.append(sentence_text)
+                        await safe_send_json({
                             "type": "audio_chunk",
-                            "turn_id": turn_id,
+                            "turn_id": t_id,
                             "audio": audio_b64,
                             "text": sentence_text
                         })
@@ -593,131 +503,376 @@ async def websocket_chat_endpoint(websocket: WebSocket):
 
             tts_consumer_task = asyncio.create_task(tts_consumer_worker())
 
-            try:
-                res = await loop.run_in_executor(thread_pool, fetch_ollama_chat_stream, messages_for_llm)
-                await websocket.send_json({"type": "status", "state": "speaking"})
+            # Solicitud HTTP de streaming al LLM
+            res = await loop.run_in_executor(thread_pool, fetch_ollama_chat_stream, messages_for_llm)
+            active_stream_response = res
+            cancel_event = threading.Event()
+            active_cancel_event = cancel_event
 
-                full_ai_response = []
-                sentence_buffer = ""
-                chunks_sent = 0
+            line_queue: asyncio.Queue = asyncio.Queue()
 
-                for line in res.iter_lines():
-                    if is_interrupted or gen_id != current_generation_id:
-                        print("Generación cancelada por interrupción.")
-                        break
+            def ollama_stream_reader(stream_resp, out_queue, ev_loop, cancel_ev):
+                try:
+                    for line in stream_resp.iter_lines():
+                        if cancel_ev.is_set():
+                            break
+                        if line:
+                            ev_loop.call_soon_threadsafe(out_queue.put_nowait, line)
+                except Exception:
+                    pass
+                finally:
+                    try:
+                        stream_resp.close()
+                    except Exception:
+                        pass
+                    ev_loop.call_soon_threadsafe(out_queue.put_nowait, None)
 
-                    if not line:
-                        continue
+            reader_thread = threading.Thread(
+                target=ollama_stream_reader,
+                args=(res, line_queue, loop, cancel_event),
+                daemon=True
+            )
+            reader_thread.start()
 
-                    chunk_data = json.loads(line.decode("utf-8") if isinstance(line, bytes) else line)
-                    delta = chunk_data.get("message", {}).get("content", "")
-                    if not delta:
-                        continue
+            await safe_send_json({"type": "status", "state": "speaking"})
 
-                    full_ai_response.append(delta)
-                    sentence_buffer += delta
-                    await websocket.send_json({
-                        "type": "ai_chunk",
-                        "turn_id": turn_id,
-                        "delta": delta
-                    })
+            sentence_buffer = ""
+            chunks_sent = 0
 
-                    # División continua de oraciones usando el SentenceChunker modular con aceleración sub-600ms
-                    is_first = (chunks_sent == 0)
-                    ready_sentence, remaining, should_split = SentenceChunker.extract_ready_sentence(sentence_buffer, is_first_chunk=is_first)
-                    if should_split and ready_sentence and not is_interrupted and gen_id == current_generation_id:
-                        chunks_sent += 1
-                        sentence_buffer = remaining
-                        is_es = (current_mode == "es") or is_text_spanish(ready_sentence)
-                        chunk_voice = current_spanish_voice if is_es else current_english_voice
-                        chunk_lang = "es" if is_es else "en-us"
-                        await tts_queue.put((ready_sentence, chunk_voice, chunk_lang))
+            while True:
+                line = await line_queue.get()
+                if line is None:
+                    break
+                if is_interrupted or gen_id != current_generation_id:
+                    cancel_event.set()
+                    if res:
+                        try:
+                            res.close()
+                        except Exception:
+                            pass
+                    break
 
-                # Encolar remanente final de texto acumulado en el buffer
-                if sentence_buffer.strip() and not is_interrupted and gen_id == current_generation_id:
-                    ready_tail = sentence_buffer.strip()
-                    is_es = (current_mode == "es") or is_text_spanish(ready_tail)
+                chunk_data = json.loads(line.decode("utf-8") if isinstance(line, bytes) else line)
+                delta = chunk_data.get("message", {}).get("content", "")
+                if not delta:
+                    continue
+
+                full_ai_response.append(delta)
+                sentence_buffer += delta
+                await safe_send_json({
+                    "type": "ai_chunk",
+                    "turn_id": t_id,
+                    "delta": delta
+                })
+
+                # División continua de oraciones usando el SentenceChunker modular
+                is_first = (chunks_sent == 0)
+                ready_sentence, remaining, should_split = SentenceChunker.extract_ready_sentence(sentence_buffer, is_first_chunk=is_first)
+                if should_split and ready_sentence and not is_interrupted and gen_id == current_generation_id:
+                    chunks_sent += 1
+                    sentence_buffer = remaining
+                    is_es = (current_mode == "es") or is_text_spanish(ready_sentence)
                     chunk_voice = current_spanish_voice if is_es else current_english_voice
                     chunk_lang = "es" if is_es else "en-us"
-                    await tts_queue.put((ready_tail, chunk_voice, chunk_lang))
+                    await tts_queue.put((ready_sentence, chunk_voice, chunk_lang))
 
-                # Señal de fin para el consumidor de audio
-                await tts_queue.put(None)
+            # Encolar remanente final de texto acumulado en el buffer
+            if sentence_buffer.strip() and not is_interrupted and gen_id == current_generation_id:
+                ready_tail = sentence_buffer.strip()
+                is_es = (current_mode == "es") or is_text_spanish(ready_tail)
+                chunk_voice = current_spanish_voice if is_es else current_english_voice
+                chunk_lang = "es" if is_es else "en-us"
+                await tts_queue.put((ready_tail, chunk_voice, chunk_lang))
+
+            # Señal de fin para el consumidor de audio
+            await tts_queue.put(None)
+            if tts_consumer_task:
                 await tts_consumer_task
 
-                ai_text = "".join(full_ai_response).strip()
-                if ai_text and not is_interrupted and gen_id == current_generation_id:
+            ai_text = "".join(full_ai_response).strip()
+            if is_interrupted or gen_id != current_generation_id:
+                # Interrumpido durante la respuesta: truncar contexto a lo que el usuario realmente escuchó
+                spoken_part = " ".join(spoken_sentences).strip()
+                if spoken_part:
+                    interrupted_summary = f"{spoken_part} ... [interrumpido]"
+                    conversation_history.append({"role": "assistant", "content": interrupted_summary})
+                    database.save_message(
+                        session_id=session_id,
+                        role="assistant",
+                        content=interrupted_summary,
+                        turn_id=t_id
+                    )
+                    await safe_send_json({
+                        "type": "ai_interrupted",
+                        "turn_id": t_id,
+                        "partial_text": interrupted_summary
+                    })
+            else:
+                # Turno completado con éxito
+                if ai_text:
                     conversation_history.append({"role": "assistant", "content": ai_text})
-                    await websocket.send_json({
+                    await safe_send_json({
                         "type": "ai_done",
-                        "turn_id": turn_id,
+                        "turn_id": t_id,
                         "full_text": ai_text
                     })
 
-                    # Persistir en SQLite
                     database.save_message(
                         session_id=session_id,
                         role="assistant",
                         content=ai_text,
-                        turn_id=turn_id
+                        turn_id=t_id
                     )
                     asyncio.create_task(maybe_auto_title_session(session_id))
 
                     # Análisis pedagógico post-turno (solo modo inglés)
                     if current_mode == "en":
-                        async def background_post_chat_analysis(t_id: str, u_text: str, a_text: str):
+                        async def background_post_chat_analysis(tid: str, user_msg: str, ai_msg: str):
                             try:
-                                analysis = await loop.run_in_executor(thread_pool, fast_analyze_turn, u_text, a_text)
+                                analysis = await loop.run_in_executor(thread_pool, fast_analyze_turn, user_msg, ai_msg)
                                 if analysis and isinstance(analysis, dict):
                                     u_tr = analysis.get("user_tr")
                                     a_tr = analysis.get("ai_tr")
                                     tip = analysis.get("tip")
                                     if u_tr:
-                                        database.update_message_translation(t_id, "user", u_tr)
-                                        await websocket.send_json({
+                                        database.update_message_translation(tid, "user", u_tr)
+                                        await safe_send_json({
                                             "type": "user_translation",
-                                            "turn_id": t_id,
+                                            "turn_id": tid,
                                             "translation": u_tr
                                         })
                                     if a_tr:
-                                        database.update_message_translation(t_id, "assistant", a_tr)
-                                        await websocket.send_json({
+                                        database.update_message_translation(tid, "assistant", a_tr)
+                                        await safe_send_json({
                                             "type": "ai_translation",
-                                            "turn_id": t_id,
+                                            "turn_id": tid,
                                             "translation": a_tr
                                         })
                                     if tip and str(tip).strip().lower() not in ["null", "none", ""]:
                                         database.save_vocabulary_or_correction(
-                                            phrase=u_text,
+                                            phrase=user_msg,
                                             tip=tip,
                                             language=current_mode
                                         )
-                                        await websocket.send_json({
+                                        await safe_send_json({
                                             "type": "coaching_feedback",
-                                            "turn_id": t_id,
+                                            "turn_id": tid,
                                             "tip": tip
                                         })
                             except asyncio.CancelledError:
                                 pass
-                            except Exception as e:
-                                print(f"Error en tarea de análisis: {e}")
+                            except Exception as ex:
+                                print(f"Error en tarea de análisis: {ex}")
 
                         cancel_background_analysis()
                         active_analysis_task = asyncio.create_task(
-                            background_post_chat_analysis(turn_id, user_text, ai_text)
+                            background_post_chat_analysis(t_id, u_text, ai_text)
                         )
 
-            except Exception as e:
-                print(f"Error en streaming: {e}")
-                await websocket.send_json({"type": "error", "message": f"Error: {e}"})
+        except asyncio.CancelledError:
+            # Captura de cancelación instantánea (<1ms) activada por cancel_active_turn()
+            if cancel_event:
+                try:
+                    cancel_event.set()
+                except Exception:
+                    pass
+            if res:
+                try:
+                    res.close()
+                except Exception:
+                    pass
+            if tts_consumer_task and not tts_consumer_task.done():
+                tts_consumer_task.cancel()
 
-            await websocket.send_json({"type": "status", "state": "idle"})
+            spoken_part = " ".join(spoken_sentences).strip()
+            if spoken_part:
+                interrupted_summary = f"{spoken_part} ... [interrumpido]"
+                conversation_history.append({"role": "assistant", "content": interrupted_summary})
+                database.save_message(
+                    session_id=session_id,
+                    role="assistant",
+                    content=interrupted_summary,
+                    turn_id=t_id
+                )
+                await safe_send_json({
+                    "type": "ai_interrupted",
+                    "turn_id": t_id,
+                    "partial_text": interrupted_summary
+                })
+        except Exception as e:
+            print(f"Error en streaming / ejecución de turno: {e}")
+            await safe_send_json({"type": "error", "message": f"Error: {e}"})
+        finally:
+            active_stream_response = None
+            active_cancel_event = None
+            if not is_interrupted and gen_id == current_generation_id:
+                await safe_send_json({"type": "status", "state": "idle"})
+
+    try:
+        # Loop principal de WebSocket 100% NO BLOQUEANTE:
+        # Recibe señales de Barge-in (interrupt) y audio de forma instantánea en cualquier milisegundo.
+        while True:
+            data = await websocket.receive_json()
+            msg_type = data.get("type")
+
+            # 0. Cambio de sesión conversacional (Historial estilo ChatGPT)
+            if msg_type == "switch_session":
+                cancel_active_turn()
+                target_session_id = data.get("session_id")
+                if target_session_id:
+                    session_id = target_session_id
+                    current_sess = database.get_session_by_id(session_id)
+                    if current_sess:
+                        prev_messages = database.get_session_messages(session_id)
+                        curr_title = current_sess.get("title") or "Nueva conversación"
+                    else:
+                        prev_messages = []
+                        curr_title = "Nueva conversación"
+
+                    conversation_history = [{"role": "system", "content": get_system_prompt(current_mode, current_personality)}]
+                    for pm in prev_messages[-10:]:
+                        conversation_history.append({"role": pm["role"], "content": pm["content"]})
+                    print(f"Sesión activa cambiada a: {session_id} ('{curr_title}')")
+                    await safe_send_json({
+                        "type": "session_switched",
+                        "session_id": session_id,
+                        "title": curr_title,
+                        "messages_count": len(prev_messages)
+                    })
+                continue
+
+            # 1. Configuración dinámica de modo de idioma
+            if msg_type == "set_mode":
+                cancel_active_turn()
+                new_mode = data.get("mode", "en")
+                if new_mode in ["en", "es", "auto"]:
+                    current_mode = new_mode
+                    conversation_history = [{"role": "system", "content": get_system_prompt(current_mode, current_personality)}]
+                    print(f"Modo cambiado a: {current_mode} (personalidad: {current_personality})")
+                    await safe_send_json({"type": "mode_changed", "mode": current_mode})
+                continue
+
+            # 2. Configuración dinámica de personalidad conversacional
+            if msg_type == "set_personality":
+                cancel_active_turn()
+                new_personality = data.get("personality", DEFAULT_PERSONALITY)
+                if new_personality in PERSONALITIES:
+                    current_personality = new_personality
+                    conversation_history = [{"role": "system", "content": get_system_prompt(current_mode, current_personality)}]
+                    print(f"Personalidad cambiada a: {current_personality}")
+                    await safe_send_json({"type": "personality_changed", "personality": current_personality})
+                continue
+
+            # Configuración dinámica de Modo Susurro (Whisper Mode)
+            if msg_type == "set_whisper_mode":
+                is_whisper_mode = bool(data.get("enabled", False))
+                print(f"Modo Susurro: {'ACTIVADO' if is_whisper_mode else 'DESACTIVADO'}")
+                await safe_send_json({"type": "whisper_mode_changed", "enabled": is_whisper_mode})
+                continue
+
+            # Configuración dinámica de voces
+            if msg_type == "set_voice":
+                new_voice = data.get("voice", "")
+                if new_voice:
+                    if new_voice in VOICE_BLENDS or "blend" in new_voice:
+                        current_spanish_voice = new_voice
+                        current_english_voice = new_voice
+                    elif new_voice.startswith("e"):
+                        current_spanish_voice = new_voice
+                    else:
+                        current_english_voice = new_voice
+                    print(f"Voz configurada -> ES: {current_spanish_voice}, EN: {current_english_voice}")
+                    await safe_send_json({
+                        "type": "voice_changed",
+                        "spanish_voice": current_spanish_voice,
+                        "english_voice": current_english_voice
+                    })
+                continue
+
+            # 3. Interrupción instantánea (Barge-in / Speech Start)
+            if msg_type == "interrupt":
+                print("⚡ Interrupción recibida del cliente (Barge-in).")
+                cancel_active_turn()
+                await safe_send_json({"type": "interrupted"})
+                await safe_send_json({"type": "status", "state": "idle"})
+                continue
+
+            # 4. Transcripción parcial en vivo (Live Streaming STT)
+            if msg_type == "audio_partial":
+                if stt_busy:
+                    continue
+                audio_base64 = data.get("audio", "")
+                if not audio_base64:
+                    continue
+                audio_bytes = base64.b64decode(audio_base64)
+                loop = asyncio.get_running_loop()
+                try:
+                    stt_busy = True
+                    partial_text, _, detected_lang = await loop.run_in_executor(
+                        thread_pool, transcribe_audio_bytes, stt_model, audio_bytes, current_mode
+                    )
+                    if partial_text:
+                        await safe_send_json({
+                            "type": "user_partial_transcription",
+                            "text": partial_text,
+                            "lang": detected_lang
+                        })
+                finally:
+                    stt_busy = False
+                continue
+
+            # 5. Entrada del usuario (audio o texto)
+            user_text = ""
+            stt_latency = 0
+            detected_lang = "en"
+            turn_id = data.get("turn_id") or f"turn-{int(time.time() * 1000)}"
+
+            if msg_type in ["audio", "audio_final"]:
+                # Si el usuario envió nuevo audio final, cancelar cualquier turno previo en curso
+                cancel_active_turn()
+                is_interrupted = False
+
+                audio_base64 = data.get("audio", "")
+                if not audio_base64:
+                    continue
+                audio_bytes = base64.b64decode(audio_base64)
+                await safe_send_json({"type": "status", "state": "transcribing"})
+
+                loop = asyncio.get_running_loop()
+                try:
+                    stt_busy = True
+                    user_text, stt_latency, detected_lang = await loop.run_in_executor(
+                        thread_pool, transcribe_audio_bytes, stt_model, audio_bytes, current_mode
+                    )
+                finally:
+                    stt_busy = False
+
+                if not user_text:
+                    await safe_send_json({"type": "status", "state": "idle"})
+                    continue
+
+            elif msg_type == "text":
+                cancel_active_turn()
+                is_interrupted = False
+                user_text = data.get("text", "").strip()
+                if not user_text:
+                    continue
+                detected_lang = "es" if is_text_spanish(user_text) else "en"
+            else:
+                continue
+
+            # Iniciar pipeline de respuesta de la IA en segundo plano de forma no bloqueante
+            current_generation_id += 1
+            gen_id = current_generation_id
+            active_turn_task = asyncio.create_task(
+                execute_turn_pipeline(user_text, turn_id, gen_id, detected_lang, stt_latency)
+            )
 
     except WebSocketDisconnect:
-        cancel_background_analysis()
+        cancel_active_turn()
         print("Cliente desconectado.")
     except Exception as e:
-        cancel_background_analysis()
+        cancel_active_turn()
         print(f"Excepción WebSocket: {e}")
 
 def get_local_ip() -> str:

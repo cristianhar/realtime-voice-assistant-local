@@ -109,9 +109,10 @@ const audioRecorder = new AudioRecorderManager({
 
     onSpeechStart: () => {
         chatUI.setOrbState("listening", "Escuchando...");
-        if (audioPlayer.isAudioPlaying) {
-            audioPlayer.interrupt();
-            sendWsMessage({ type: "interrupt" });
+        if (audioPlayer.isAudioPlaying || audioPlayer.isPlayingAudioNow() || audioPlayer.activeTurnId) {
+            const currentTid = audioPlayer.activeTurnId;
+            audioPlayer.interrupt(currentTid);
+            sendWsMessage({ type: "interrupt", turn_id: currentTid });
             earcons.playBargeIn();
         }
     },
@@ -314,6 +315,18 @@ function handleServerMessage(data) {
 
         case "interrupted":
             audioPlayer.interrupt();
+            chatUI.setOrbState(isCallMode ? "listening" : "idle", isCallMode ? "📞 Te escucho..." : "Interrumpido");
+            break;
+
+        case "ai_interrupted":
+            audioPlayer.interrupt(data.turn_id);
+            if (data.turn_id && data.partial_text) {
+                const aiTextEl = document.getElementById(`ai-text-${data.turn_id}`);
+                if (aiTextEl) {
+                    aiTextEl.innerText = data.partial_text;
+                }
+                chatUI.finalizeAiTurn(data.turn_id, data.partial_text);
+            }
             chatUI.setOrbState(isCallMode ? "listening" : "idle", isCallMode ? "📞 Te escucho..." : "Interrumpido");
             break;
 

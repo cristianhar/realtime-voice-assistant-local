@@ -115,5 +115,21 @@ class TestSentenceChunker(unittest.TestCase):
         # El buffer en reproducción debe tener al menos 1000ms de margen libre
         self.assertGreater(headroom_ms, 1000, "El margen de seguridad del buffer debe ser > 1s para evitar vacilaciones")
 
+    def test_leading_newlines_and_question_marks(self):
+        """Valida que tokens iniciales con saltos de línea o signos no bloqueen la extracción."""
+        buf = "\n\n¿Cómo estás hoy? Muy bien gracias."
+        sentence, remaining, should_split = SentenceChunker.extract_ready_sentence(buf)
+        self.assertTrue(should_split)
+        self.assertEqual(sentence, "¿Cómo estás hoy?")
+        self.assertEqual(remaining.strip(), "Muy bien gracias.")
+
+    def test_decimal_numbers_do_not_split(self):
+        """Valida que números decimales como 3.14 o 3.2B no se corten en el punto decimal."""
+        buf = "El modelo cuesta 3.14 dólares y tiene 3.2B parámetros."
+        sentence, remaining, should_split = SentenceChunker.extract_ready_sentence(buf)
+        self.assertTrue(should_split)
+        self.assertEqual(sentence, "El modelo cuesta 3.14 dólares y tiene 3.2B parámetros.")
+        self.assertEqual(remaining.strip(), "")
+
 if __name__ == "__main__":
     unittest.main()

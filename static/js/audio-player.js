@@ -19,6 +19,7 @@ class AudioPlayerManager {
         this.activeTurnId = null;
         this.isTurnComplete = false;
         this.graceTimeout = null;
+        this.interruptedTurns = new Set();
     }
 
     setPlaybackSpeed(speed) {
@@ -55,6 +56,10 @@ class AudioPlayerManager {
 
     enqueueAudio(base64Wav, turnId = null, text = "") {
         if (!base64Wav) return;
+        const tid = turnId || this.activeTurnId;
+        if (tid && this.interruptedTurns && this.interruptedTurns.has(tid)) {
+            return; // Descartar chunks obsoletos de turnos cancelados por Barge-in
+        }
         if (this.graceTimeout) {
             clearTimeout(this.graceTimeout);
             this.graceTimeout = null;
@@ -175,7 +180,11 @@ class AudioPlayerManager {
         this.onPlayEnd();
     }
 
-    interrupt() {
+    interrupt(turnId = null) {
+        const tid = turnId || this.activeTurnId;
+        if (tid && this.interruptedTurns) {
+            this.interruptedTurns.add(tid);
+        }
         if (this.graceTimeout) {
             clearTimeout(this.graceTimeout);
             this.graceTimeout = null;

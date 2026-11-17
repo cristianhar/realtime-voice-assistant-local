@@ -164,16 +164,17 @@ class AudioRecorderManager {
             }
         }
 
-        // Supresión de Eco Acústico (AEC Guard): si la IA está hablando por los altavoces,
-        // elevar el umbral VAD para no interrumpirse a sí misma con su propia voz.
-        const effectiveThreshold = window.isAudioPlaying ? (this.vadThreshold * 2.2) : this.vadThreshold;
+        // Supresión de Eco Acústico Inteligente (AEC Guard): si la IA está hablando por los altavoces,
+        // elevar el umbral VAD de forma equilibrada (1.35x) para no interrumpirse por el altavoz,
+        // pero permitiendo que la voz humana natural interrumpa de inmediato (Barge-in instantáneo).
+        const effectiveThreshold = window.isAudioPlaying ? (this.vadThreshold * 1.35) : this.vadThreshold;
         const isSpeaking = (rms > effectiveThreshold) && (zcr < 0.38) && isVoiceFormant;
 
         this.onMicLevel(rms, isSpeaking);
 
         if (isSpeaking) {
             this.consecutiveSpeakingFrames++;
-            const minFramesRequired = window.isAudioPlaying ? 2 : 1;
+            const minFramesRequired = 1; // Disparo inmediato en el primer bloque vocal detectado
 
             if (this.consecutiveSpeakingFrames >= minFramesRequired && !this.isUserSpeakingInCall) {
                 this.isUserSpeakingInCall = true;

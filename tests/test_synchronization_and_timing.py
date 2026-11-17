@@ -147,5 +147,34 @@ class TestSynchronizationAndTiming(unittest.TestCase):
         self.assertIn("voice_assistant_sync_text", app_code)
         self.assertIn("chatUI.revealChunkSpeech", app_code)
 
+    def test_non_blocking_barge_in_architecture(self):
+        """
+        Verifica la arquitectura Full-Duplex no bloqueante para Barge-In instantáneo:
+        1. server.py desacopla el turno en execute_turn_pipeline para no bloquear websocket.receive_json().
+        2. cancel_active_turn cancela la tarea, aborta la conexión streaming y detiene Kokoro TTS.
+        3. En caso de interrupción, se persiste el historial con '... [interrumpido]' y emite 'ai_interrupted'.
+        4. static/app.js procesa 'ai_interrupted' y actualiza la burbuja del asistente.
+        5. audio-player.js descarta chunks obsoletos de turnos interrumpidos via interruptedTurns.
+        """
+        server_path = os.path.join(PROJECT_ROOT, "server.py")
+        app_path = os.path.join(PROJECT_ROOT, "static", "app.js")
+        player_path = os.path.join(PROJECT_ROOT, "static", "js", "audio-player.js")
+
+        with open(server_path, "r", encoding="utf-8") as f:
+            server_code = f.read()
+        self.assertIn("execute_turn_pipeline", server_code)
+        self.assertIn("cancel_active_turn", server_code)
+        self.assertIn("safe_send_json", server_code)
+        self.assertIn("[interrumpido]", server_code)
+        self.assertIn("ai_interrupted", server_code)
+
+        with open(app_path, "r", encoding="utf-8") as f:
+            app_code = f.read()
+        self.assertIn('case "ai_interrupted":', app_code)
+
+        with open(player_path, "r", encoding="utf-8") as f:
+            player_code = f.read()
+        self.assertIn("interruptedTurns", player_code)
+
 if __name__ == "__main__":
     unittest.main()
