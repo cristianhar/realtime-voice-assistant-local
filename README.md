@@ -48,7 +48,7 @@ flowchart LR
         MIC["🎙️ Microphone (16kHz PCM)"] --> VAD["🎚️ Web Audio VAD + Noise Filter"]
         VAD --> WS_CLIENT["⚡ Secure WebSocket (WSS)"]
         WS_CLIENT -. Barge-In Cutoff .-> CANCEL["⏹️ Instant Interruption (<50ms)"]
-        WS_AUDIO["🔊 Web Audio Streaming Buffer"] <-- Base64 Audio Chunks -- WS_CLIENT
+        WS_CLIENT -- "Base64 Audio Chunks" --> WS_AUDIO["🔊 Web Audio Streaming Buffer"]
     end
 
     subgraph Server ["🖥️ Local FastAPI Server (server.py)"]
