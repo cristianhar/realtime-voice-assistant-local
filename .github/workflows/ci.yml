@@ -45,7 +45,7 @@ jobs:
         run: |
           docker compose config
 
-      - name: Run Quality Gate Test Suite (38 Automated Tests)
+      - name: Run Quality Gate Test Suite (76 Automated Tests)
         run: |
           python tests/run_all_tests.py
 
