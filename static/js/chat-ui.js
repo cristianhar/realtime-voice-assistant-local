@@ -13,6 +13,15 @@ class ChatUIManager {
 
         this.currentPartialBubble = null;
         this.currentPartialTextEl = null;
+
+        // Sincronización dinámica de texto con el habla (Karaoke / Teleprompter)
+        this.isSyncTextEnabled = true;
+        this.turnBuffers = {};
+        this.activeSyncInterval = null;
+    }
+
+    setSyncTextEnabled(enabled) {
+        this.isSyncTextEnabled = !!enabled;
     }
 
     escapeHtml(text) {
@@ -220,10 +229,92 @@ class ChatUIManager {
     }
 
     appendAiChunk(delta, turnId) {
+        if (!turnId) return;
+        this.turnBuffers[turnId] = (this.turnBuffers[turnId] || "") + delta;
+
+        // Si la sincronización está deshabilitada en los ajustes, mostrar en tiempo real tal como llega del LLM
+        if (!this.isSyncTextEnabled) {
+            const textEl = document.getElementById(`ai-text-${turnId}`);
+            if (textEl) {
+                textEl.innerText += delta;
+                if (this.chatMessages) this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }
+        }
+    }
+
+    revealChunkSpeech(chunkText, turnId, audioElement) {
+        if (!chunkText || !turnId) return;
         const textEl = document.getElementById(`ai-text-${turnId}`);
-        if (textEl) {
-            textEl.innerText += delta;
+        if (!textEl) return;
+
+        // Si la sincronización está desactivada, el texto ya fue mostrado en tiempo real por appendAiChunk
+        if (!this.isSyncTextEnabled) return;
+
+        if (this.activeSyncInterval) {
+            clearInterval(this.activeSyncInterval);
+            this.activeSyncInterval = null;
+        }
+
+        const cleanChunk = chunkText.trim();
+        if (!cleanChunk) return;
+
+        const currentText = textEl.innerText.trim();
+        const basePrefix = currentText ? (currentText + " ") : "";
+
+        const words = cleanChunk.split(/\s+/).filter(Boolean);
+        if (words.length <= 1 || !audioElement) {
+            textEl.innerText = basePrefix + cleanChunk;
             if (this.chatMessages) this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            return;
+        }
+
+        let lastWordIdx = 0;
+        const syncWords = () => {
+            if (!audioElement || audioElement.ended || audioElement.paused) return;
+            const duration = audioElement.duration || (words.length * 0.32);
+            const current = audioElement.currentTime || 0;
+            const progress = duration > 0 ? Math.min(1.0, current / duration) : 1.0;
+            const targetIdx = Math.min(words.length, Math.max(1, Math.ceil(progress * words.length)));
+            if (targetIdx > lastWordIdx) {
+                lastWordIdx = targetIdx;
+                textEl.innerText = basePrefix + words.slice(0, targetIdx).join(" ");
+                if (this.chatMessages) this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }
+        };
+
+        this.activeSyncInterval = setInterval(syncWords, 50);
+
+        audioElement.addEventListener("ended", () => {
+            if (this.activeSyncInterval) {
+                clearInterval(this.activeSyncInterval);
+                this.activeSyncInterval = null;
+            }
+            textEl.innerText = basePrefix + cleanChunk;
+            if (this.chatMessages) this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+        }, { once: true });
+    }
+
+    finalizeAiTurn(turnId, fallbackFullText = "") {
+        if (this.activeSyncInterval) {
+            clearInterval(this.activeSyncInterval);
+            this.activeSyncInterval = null;
+        }
+        if (turnId) {
+            const textEl = document.getElementById(`ai-text-${turnId}`);
+            if (textEl) {
+                const full = fallbackFullText || this.turnBuffers[turnId] || "";
+                if (full && (!textEl.innerText.trim() || !this.isSyncTextEnabled)) {
+                    textEl.innerText = full;
+                }
+            }
+            delete this.turnBuffers[turnId];
+        }
+    }
+
+    interruptSpeechSync() {
+        if (this.activeSyncInterval) {
+            clearInterval(this.activeSyncInterval);
+            this.activeSyncInterval = null;
         }
     }
 
@@ -341,6 +432,15 @@ class ChatUIManager {
         `;
         this.currentPartialBubble = null;
         this.currentPartialTextEl = null;
+
+        // Sincronización dinámica de texto con el habla (Karaoke / Teleprompter)
+        this.isSyncTextEnabled = true;
+        this.turnBuffers = {};
+        this.activeSyncInterval = null;
+    }
+
+    setSyncTextEnabled(enabled) {
+        this.isSyncTextEnabled = !!enabled;
     }
 
     loadHistoricalMessages(messages, currentLangMode = "en") {

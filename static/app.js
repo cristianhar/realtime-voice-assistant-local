@@ -80,13 +80,20 @@ const audioPlayer = new AudioPlayerManager({
             const parent = interruptBtn.closest(".action-btn-interrupt");
             if (parent) parent.classList.add("hidden");
         }
+        if (audioPlayer.activeTurnId) {
+            chatUI.finalizeAiTurn(audioPlayer.activeTurnId);
+        }
         if (isCallMode) {
             chatUI.setOrbState("listening", "📞 Te escucho...");
         } else {
             chatUI.setOrbState("idle", "Listo para conversar");
         }
     },
+    onChunkStart: (text, turnId, audioObj) => {
+        chatUI.revealChunkSpeech(text, turnId, audioObj);
+    },
     onInterrupt: () => {
+        chatUI.interruptSpeechSync();
         if (interruptBtn) {
             interruptBtn.classList.add("hidden");
             const parent = interruptBtn.closest(".action-btn-interrupt");
@@ -252,11 +259,14 @@ function handleServerMessage(data) {
                 }
                 firstAudioReceived = true;
             }
-            audioPlayer.enqueueAudio(data.audio, data.turn_id);
+            audioPlayer.enqueueAudio(data.audio, data.turn_id, data.text || "");
             break;
 
         case "ai_done":
             audioPlayer.markTurnComplete(data.turn_id);
+            if (!audioPlayer.isPlayingAudioNow() && audioPlayer.audioQueue.length === 0) {
+                chatUI.finalizeAiTurn(data.turn_id, data.full_text);
+            }
             if (data.turn_id && data.full_text) {
                 const aiTextEl = document.getElementById(`ai-text-${data.turn_id}`);
                 if (aiTextEl && !aiTextEl.innerText.trim()) {
@@ -391,6 +401,22 @@ window.addEventListener("DOMContentLoaded", async () => {
         whisperBtn.addEventListener("click", () => {
             const nextState = !isWhisperMode;
             sendWsMessage({ type: "set_whisper_mode", enabled: nextState });
+        });
+    }
+
+    // Toggle de Sincronización de Texto y Voz (Karaoke / Teleprompter)
+    const toggleSyncText = document.getElementById("toggle-sync-text");
+    const savedSyncPref = localStorage.getItem("voice_assistant_sync_text");
+    const initialSyncState = savedSyncPref !== null ? (savedSyncPref === "true") : true;
+
+    chatUI.setSyncTextEnabled(initialSyncState);
+    if (toggleSyncText) {
+        toggleSyncText.checked = initialSyncState;
+        toggleSyncText.addEventListener("change", (e) => {
+            const isChecked = e.target.checked;
+            chatUI.setSyncTextEnabled(isChecked);
+            localStorage.setItem("voice_assistant_sync_text", isChecked ? "true" : "false");
+            console.log(`[TextSync] Sincronización de texto con habla: ${isChecked ? 'ACTIVADA' : 'DESACTIVADA'}`);
         });
     }
 

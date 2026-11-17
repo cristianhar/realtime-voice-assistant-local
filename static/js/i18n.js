@@ -27,6 +27,8 @@ const DEFAULT_FALLBACK_LOCALES = {
         "label_personality": "🎭 Personalidad:",
         "label_speed": "⏩ Velocidad:",
         "label_whisper": "🌙 Susurro:",
+        "label_sync_text": "Sincronizar Texto con la Voz:",
+        "desc_sync_text": "El texto aparece en pantalla a medida que la IA va hablando.",
         "whisper_off": "Desactivado",
         "whisper_on": "Activado",
         "pers_coach": "🎓 Tutor de Idiomas",
@@ -84,6 +86,8 @@ const DEFAULT_FALLBACK_LOCALES = {
         "label_personality": "🎭 Personality:",
         "label_speed": "⏩ Speed:",
         "label_whisper": "🌙 Whisper:",
+        "label_sync_text": "Sync Text with Voice:",
+        "desc_sync_text": "Text appears on screen as the AI speaks.",
         "whisper_off": "Off",
         "whisper_on": "Active",
         "pers_coach": "🎓 Language Coach",
@@ -309,6 +313,11 @@ const I18nManager = {
         if (btnNewChatText) btnNewChatText.innerText = t.new_chat || "Nueva Conversación";
         const historySearchInput = document.getElementById("history-search-input");
         if (historySearchInput) historySearchInput.placeholder = t.search_chats || "🔍 Buscar conversaciones...";
+
+        const lSync = document.getElementById("label-sync-text");
+        if (lSync) lSync.innerText = t.label_sync_text || "Sincronizar Texto con la Voz:";
+        const dSync = document.getElementById("desc-sync-text");
+        if (dSync) dSync.innerText = t.desc_sync_text || "El texto aparece en pantalla a medida que la IA va hablando.";
     }
 };
 

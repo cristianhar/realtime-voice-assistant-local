@@ -12,6 +12,8 @@ class AudioPlayerManager {
         this.onPlayStart = options.onPlayStart || (() => {});
         this.onPlayEnd = options.onPlayEnd || (() => {});
         this.onInterrupt = options.onInterrupt || (() => {});
+        this.onChunkStart = options.onChunkStart || (() => {});
+        this.onChunkEnd = options.onChunkEnd || (() => {});
 
         // Sincronización robusta por turno conversacional
         this.activeTurnId = null;
@@ -51,7 +53,7 @@ class AudioPlayerManager {
         return !!(this.currentAudioElement && !this.currentAudioElement.paused && !this.currentAudioElement.ended);
     }
 
-    enqueueAudio(base64Wav, turnId = null) {
+    enqueueAudio(base64Wav, turnId = null, text = "") {
         if (!base64Wav) return;
         if (this.graceTimeout) {
             clearTimeout(this.graceTimeout);
@@ -63,7 +65,11 @@ class AudioPlayerManager {
 
         const audioObj = new Audio("data:audio/wav;base64," + base64Wav);
         audioObj.preload = "auto";
-        this.audioQueue.push(audioObj);
+        this.audioQueue.push({
+            audio: audioObj,
+            turnId: turnId || this.activeTurnId,
+            text: text || ""
+        });
 
         // Si NO hay ningún elemento de audio reproduciéndose activamente en este instante físico,
         // reproducir el siguiente de la cola de inmediato (elimina el bloqueo por cola vacía previa).
@@ -106,23 +112,50 @@ class AudioPlayerManager {
         window.isAudioPlaying = true;
         this.onPlayStart();
 
-        const audioObj = this.audioQueue.shift();
+        const queueEntry = this.audioQueue.shift();
+        const audioObj = (queueEntry && queueEntry.audio) ? queueEntry.audio : queueEntry;
+        const chunkText = (queueEntry && queueEntry.text) ? queueEntry.text : "";
+        const chunkTurnId = (queueEntry && queueEntry.turnId) ? queueEntry.turnId : this.activeTurnId;
+
         this.currentAudioElement = audioObj;
         this.currentAudioElement.playbackRate = this.playbackSpeed;
 
+        if (typeof this.onChunkStart === "function") {
+            try {
+                this.onChunkStart(chunkText, chunkTurnId, audioObj);
+            } catch (err) {
+                console.error("[AudioPlayer] Error en onChunkStart:", err);
+            }
+        }
+
         this.currentAudioElement.onended = () => {
+            if (typeof this.onChunkEnd === "function") {
+                try {
+                    this.onChunkEnd(chunkText, chunkTurnId);
+                } catch (e) {}
+            }
             this.currentAudioElement = null;
             this.playNextChunk();
         };
 
         this.currentAudioElement.onerror = (e) => {
             console.error("[AudioPlayer] Error en reproducción de audio chunk:", e);
+            if (typeof this.onChunkEnd === "function") {
+                try {
+                    this.onChunkEnd(chunkText, chunkTurnId);
+                } catch (e) {}
+            }
             this.currentAudioElement = null;
             this.playNextChunk();
         };
 
         this.currentAudioElement.play().catch(e => {
             console.warn("[AudioPlayer] Autoplay bloqueado o abortado:", e);
+            if (typeof this.onChunkEnd === "function") {
+                try {
+                    this.onChunkEnd(chunkText, chunkTurnId);
+                } catch (e) {}
+            }
             this.currentAudioElement = null;
             this.playNextChunk();
         });

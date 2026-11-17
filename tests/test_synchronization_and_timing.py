@@ -114,5 +114,38 @@ class TestSynchronizationAndTiming(unittest.TestCase):
         self.assertIn("effectiveThreshold", code, "Falta effectiveThreshold en audio-recorder.js")
         self.assertIn("consecutiveSpeakingFrames", code, "Falta conteo de tramas consecutivas en audio-recorder.js")
 
+    def test_speech_synced_text_implementation(self):
+        """
+        Verifica que el sistema de texto sincronizado con el habla (Karaoke / Teleprompter)
+        esté implementado en frontend:
+        1. audio-player.js exponga onChunkStart enviando el fragmento de texto correspondiente.
+        2. chat-ui.js implemente revealChunkSpeech y finalizeAiTurn para la revelación progresiva.
+        3. index.html contenga el toggle en la modal de ajustes para activar/desactivar la función.
+        4. app.js sincronice la preferencia con localStorage y los eventos del reproductor.
+        """
+        player_path = os.path.join(PROJECT_ROOT, "static", "js", "audio-player.js")
+        chat_ui_path = os.path.join(PROJECT_ROOT, "static", "js", "chat-ui.js")
+        index_path = os.path.join(PROJECT_ROOT, "static", "index.html")
+        app_path = os.path.join(PROJECT_ROOT, "static", "app.js")
+
+        with open(player_path, "r", encoding="utf-8") as f:
+            player_code = f.read()
+        self.assertIn("onChunkStart", player_code)
+
+        with open(chat_ui_path, "r", encoding="utf-8") as f:
+            chat_code = f.read()
+        self.assertIn("revealChunkSpeech", chat_code)
+        self.assertIn("finalizeAiTurn", chat_code)
+        self.assertIn("setSyncTextEnabled", chat_code)
+
+        with open(index_path, "r", encoding="utf-8") as f:
+            index_code = f.read()
+        self.assertIn("toggle-sync-text", index_code)
+
+        with open(app_path, "r", encoding="utf-8") as f:
+            app_code = f.read()
+        self.assertIn("voice_assistant_sync_text", app_code)
+        self.assertIn("chatUI.revealChunkSpeech", app_code)
+
 if __name__ == "__main__":
     unittest.main()
