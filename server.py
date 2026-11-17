@@ -458,8 +458,9 @@ async def websocket_chat_endpoint(websocket: WebSocket):
             # 5. TURNO CONVERSACIONAL CON LLM (Prioridad Absoluta de GPU)
             # -----------------------------------------------------------------
             conversation_history.append({"role": "user", "content": u_text})
-            if len(conversation_history) > 9:
-                conversation_history = [conversation_history[0]] + conversation_history[-8:]
+            # Mantener hasta 30 mensajes recientes (15 turnos completos) en el contexto de LLaMA 3.2
+            if len(conversation_history) > 31:
+                conversation_history = [conversation_history[0]] + conversation_history[-30:]
 
             # Inyectar memoria persistente ultraligera (RAG híbrido de notas, perfil y FTS5)
             memory_block = database.get_smart_memory_context(u_text)
@@ -730,7 +731,7 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                         curr_title = "Nueva conversación"
 
                     conversation_history = [{"role": "system", "content": get_system_prompt(current_mode, current_personality)}]
-                    for pm in prev_messages[-10:]:
+                    for pm in prev_messages[-30:]:
                         conversation_history.append({"role": pm["role"], "content": pm["content"]})
                     print(f"Sesión activa cambiada a: {session_id} ('{curr_title}')")
                     await safe_send_json({
@@ -747,7 +748,11 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                 new_mode = data.get("mode", "en")
                 if new_mode in ["en", "es", "auto"]:
                     current_mode = new_mode
-                    conversation_history = [{"role": "system", "content": get_system_prompt(current_mode, current_personality)}]
+                    sys_msg = {"role": "system", "content": get_system_prompt(current_mode, current_personality)}
+                    if conversation_history and conversation_history[0].get("role") == "system":
+                        conversation_history[0] = sys_msg
+                    else:
+                        conversation_history.insert(0, sys_msg)
                     print(f"Modo cambiado a: {current_mode} (personalidad: {current_personality})")
                     await safe_send_json({"type": "mode_changed", "mode": current_mode})
                 continue
@@ -758,7 +763,11 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                 new_personality = data.get("personality", DEFAULT_PERSONALITY)
                 if new_personality in PERSONALITIES:
                     current_personality = new_personality
-                    conversation_history = [{"role": "system", "content": get_system_prompt(current_mode, current_personality)}]
+                    sys_msg = {"role": "system", "content": get_system_prompt(current_mode, current_personality)}
+                    if conversation_history and conversation_history[0].get("role") == "system":
+                        conversation_history[0] = sys_msg
+                    else:
+                        conversation_history.insert(0, sys_msg)
                     print(f"Personalidad cambiada a: {current_personality}")
                     await safe_send_json({"type": "personality_changed", "personality": current_personality})
                 continue
