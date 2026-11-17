@@ -18,12 +18,11 @@ class SentenceChunker:
         if not words:
             return "", buffer, False
 
-        # 1. Fin de oración canónico (. ! ? \n)
+        # 1. Fin de oración canónico (. ! ? \n): Si hay un terminador real, es una oración completa
         has_sentence_end = any(p in buffer for p in [".", "!", "?", "\n"])
-        min_words_end = 2 if is_first_chunk else 3
-        if has_sentence_end and len(words) >= min_words_end:
+        if has_sentence_end and len(words) >= 1:
             parts = re.split(r'([.!?\n]+)', buffer)
-            if len(parts) > 1:
+            if len(parts) > 1 and parts[0].strip():
                 ready_sentence = (parts[0] + parts[1]).strip()
                 remaining = "".join(parts[2:])
                 return ready_sentence, remaining, True

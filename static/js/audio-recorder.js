@@ -16,6 +16,7 @@ class AudioRecorderManager {
         this.maxSpeechDurationMs = options.maxSpeechDurationMs || 7500;
 
         this.isUserSpeakingInCall = false;
+        this.consecutiveSpeakingFrames = 0;
         this.callSilenceTimer = null;
         this.speechStartTime = 0;
         this.lastPartialSendTime = 0;
@@ -163,12 +164,18 @@ class AudioRecorderManager {
             }
         }
 
-        const isSpeaking = (rms > this.vadThreshold) && (zcr < 0.38) && isVoiceFormant;
+        // Supresión de Eco Acústico (AEC Guard): si la IA está hablando por los altavoces,
+        // elevar el umbral VAD para no interrumpirse a sí misma con su propia voz.
+        const effectiveThreshold = window.isAudioPlaying ? (this.vadThreshold * 2.2) : this.vadThreshold;
+        const isSpeaking = (rms > effectiveThreshold) && (zcr < 0.38) && isVoiceFormant;
 
         this.onMicLevel(rms, isSpeaking);
 
         if (isSpeaking) {
-            if (!this.isUserSpeakingInCall) {
+            this.consecutiveSpeakingFrames++;
+            const minFramesRequired = window.isAudioPlaying ? 2 : 1;
+
+            if (this.consecutiveSpeakingFrames >= minFramesRequired && !this.isUserSpeakingInCall) {
                 this.isUserSpeakingInCall = true;
                 window.isUserSpeakingInCall = true;
                 this.speechStartTime = Date.now();
@@ -196,12 +203,15 @@ class AudioRecorderManager {
                 this.isPartialSttPending = true;
                 this.onPartialAudio(this.callAudioBuffer.slice());
             }
-        } else if (this.isUserSpeakingInCall) {
-            this.callAudioBuffer.push(...inputData);
-            if (!this.callSilenceTimer) {
-                this.callSilenceTimer = setTimeout(() => {
-                    this.finalizeCallUtterance();
-                }, this.silenceTimeoutMs);
+        } else {
+            this.consecutiveSpeakingFrames = 0;
+            if (this.isUserSpeakingInCall) {
+                this.callAudioBuffer.push(...inputData);
+                if (!this.callSilenceTimer) {
+                    this.callSilenceTimer = setTimeout(() => {
+                        this.finalizeCallUtterance();
+                    }, this.silenceTimeoutMs);
+                }
             }
         }
     }

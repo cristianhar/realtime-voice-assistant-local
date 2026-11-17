@@ -41,10 +41,14 @@ class AudioPlayerManager {
     markTurnComplete(turnId) {
         if (!turnId || turnId === this.activeTurnId) {
             this.isTurnComplete = true;
-            if (this.audioQueue.length === 0 && !this.isAudioPlaying) {
+            if (this.audioQueue.length === 0 && !this.isPlayingAudioNow()) {
                 this.finalizeTurn();
             }
         }
+    }
+
+    isPlayingAudioNow() {
+        return !!(this.currentAudioElement && !this.currentAudioElement.paused && !this.currentAudioElement.ended);
     }
 
     enqueueAudio(base64Wav, turnId = null) {
@@ -61,32 +65,36 @@ class AudioPlayerManager {
         audioObj.preload = "auto";
         this.audioQueue.push(audioObj);
 
-        if (!this.isAudioPlaying) {
+        // Si NO hay ningún elemento de audio reproduciéndose activamente en este instante físico,
+        // reproducir el siguiente de la cola de inmediato (elimina el bloqueo por cola vacía previa).
+        if (!this.isPlayingAudioNow()) {
             this.playNextChunk();
         }
     }
 
     playNextChunk() {
-        if (this.audioQueue.length === 0) {
-            // Si el turno aún está generando audio en streaming, esperar breve ventana de gracia
-            if (!this.isTurnComplete && this.activeTurnId) {
-                if (!this.graceTimeout) {
-                    this.graceTimeout = setTimeout(() => {
-                        this.graceTimeout = null;
-                        if (this.audioQueue.length === 0 && !this.isAudioPlaying) {
-                            this.finalizeTurn();
-                        }
-                    }, 450);
-                }
-                return;
-            }
-            this.finalizeTurn();
-            return;
-        }
-
         if (this.graceTimeout) {
             clearTimeout(this.graceTimeout);
             this.graceTimeout = null;
+        }
+
+        // Si la cola está vacía
+        if (this.audioQueue.length === 0) {
+            this.currentAudioElement = null;
+
+            // Si el turno aún está generando audio en streaming, esperar breve ventana de gracia
+            if (!this.isTurnComplete && this.activeTurnId) {
+                this.graceTimeout = setTimeout(() => {
+                    this.graceTimeout = null;
+                    if (this.audioQueue.length === 0 && !this.isPlayingAudioNow()) {
+                        this.finalizeTurn();
+                    }
+                }, 500);
+                return;
+            }
+
+            this.finalizeTurn();
+            return;
         }
 
         // Respiración sutil solo al inicio absoluto del turno, nunca entre oraciones consecutivas
@@ -98,20 +106,24 @@ class AudioPlayerManager {
         window.isAudioPlaying = true;
         this.onPlayStart();
 
-        this.currentAudioElement = this.audioQueue.shift();
+        const audioObj = this.audioQueue.shift();
+        this.currentAudioElement = audioObj;
         this.currentAudioElement.playbackRate = this.playbackSpeed;
 
         this.currentAudioElement.onended = () => {
+            this.currentAudioElement = null;
             this.playNextChunk();
         };
 
         this.currentAudioElement.onerror = (e) => {
-            console.error("[AudioPlayer] Error en reproducción:", e);
+            console.error("[AudioPlayer] Error en reproducción de audio chunk:", e);
+            this.currentAudioElement = null;
             this.playNextChunk();
         };
 
         this.currentAudioElement.play().catch(e => {
-            console.warn("[AudioPlayer] Autoplay bloqueado:", e);
+            console.warn("[AudioPlayer] Autoplay bloqueado o abortado:", e);
+            this.currentAudioElement = null;
             this.playNextChunk();
         });
     }

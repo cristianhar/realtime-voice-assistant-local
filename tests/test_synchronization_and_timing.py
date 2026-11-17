@@ -74,8 +74,8 @@ class TestSynchronizationAndTiming(unittest.TestCase):
     def test_audio_player_sync_contract(self):
         """
         Verifica que static/js/audio-player.js implemente los métodos de sincronización
-        por turnos (startTurn, markTurnComplete, finalizeTurn, graceTimeout)
-        y prevenga la re-ejecución del sonido de respiración en mitad de turno.
+        por turnos (startTurn, markTurnComplete, finalizeTurn, graceTimeout, isPlayingAudioNow)
+        y prevenga la re-ejecución del sonido de respiración en mitad de turno o el bloqueo por cola vacía.
         """
         player_path = os.path.join(PROJECT_ROOT, "static", "js", "audio-player.js")
         self.assertTrue(os.path.exists(player_path))
@@ -87,6 +87,7 @@ class TestSynchronizationAndTiming(unittest.TestCase):
         self.assertIn("markTurnComplete", code, "Falta método markTurnComplete en AudioPlayerManager")
         self.assertIn("finalizeTurn", code, "Falta método finalizeTurn en AudioPlayerManager")
         self.assertIn("graceTimeout", code, "Falta graceTimeout para evitar parones entre chunks")
+        self.assertIn("isPlayingAudioNow", code, "Falta isPlayingAudioNow para evitar deadlock entre oraciones")
         self.assertIn("window.voiceHumanizer.playPreSpeechBreath", code)
 
     def test_app_js_turn_sync_integration(self):
@@ -100,6 +101,18 @@ class TestSynchronizationAndTiming(unittest.TestCase):
 
         self.assertIn("audioPlayer.startTurn", code, "app.js debe invocar audioPlayer.startTurn al enviar turnos")
         self.assertIn("audioPlayer.markTurnComplete", code, "app.js debe invocar audioPlayer.markTurnComplete en ai_done")
+
+    def test_audio_recorder_aec_guard(self):
+        """
+        Verifica que static/js/audio-recorder.js implemente el AEC Guard (Acoustic Echo Rejection)
+        para que la voz saliendo de los altavoces de la PC no interrumpa a la IA a sí misma al final de oraciones.
+        """
+        rec_path = os.path.join(PROJECT_ROOT, "static", "js", "audio-recorder.js")
+        with open(rec_path, "r", encoding="utf-8") as f:
+            code = f.read()
+
+        self.assertIn("effectiveThreshold", code, "Falta effectiveThreshold en audio-recorder.js")
+        self.assertIn("consecutiveSpeakingFrames", code, "Falta conteo de tramas consecutivas en audio-recorder.js")
 
 if __name__ == "__main__":
     unittest.main()
