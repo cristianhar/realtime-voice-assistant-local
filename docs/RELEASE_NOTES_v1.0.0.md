@@ -13,7 +13,7 @@ We are thrilled to announce the official **v1.0.0** release of **Realtime Voice 
 - **🎭 Persona Hub (`personas/`)**: Ready-to-use characters including J.A.R.V.I.S., Sarah (Language Coach), Alex (Tech Lead), and Aura (Zen Mindfulness).
 - **📦 Agensi.io Certified Skills**: 3 packaged, verified Agent Skills for Claude Code, Cursor, Copilot, and Agensi marketplace.
 - **💻 1-Click Installers**: Single-line automated setup via PowerShell (`install.ps1`) and Bash (`install.sh`).
-- **🛡️ 100% Quality Gate**: Complete end-to-end testing suite with 50+ passing tests running on GitHub Actions CI.
+- **🛡️ 100% Quality Gate**: Complete end-to-end testing suite with 76 passing tests running on GitHub Actions CI.
 
 ---
 

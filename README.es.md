@@ -12,7 +12,7 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Llama_3.2_3B-black.svg)](https://ollama.com/)
 [![Kokoro ONNX](https://img.shields.io/badge/Kokoro--TTS-82M_ONNX-FF6F00.svg)](https://github.com/thewh1teagle/kokoro-onnx)
 [![PWA](https://img.shields.io/badge/PWA-Mobile_Ready-purple.svg)](https://web.dev/progressive-web-apps/)
-[![Tests Passing](https://img.shields.io/badge/Quality_Gate-53%2F53_Passing-brightgreen.svg)](tests/run_all_tests.py)
+[![Tests Passing](https://img.shields.io/badge/Quality_Gate-76%2F76_Passing-brightgreen.svg)](tests/run_all_tests.py)
 [![CI Quality Gate](https://img.shields.io/github/actions/workflow/status/cristianhar/realtime-voice-assistant-local/ci.yml?branch=main&label=CI%20Quality%20Gate)](https://github.com/cristianhar/realtime-voice-assistant-local/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -247,7 +247,7 @@ Para una experiencia de aplicación de escritorio sin tocar la terminal:
 El proyecto cuenta con un riguroso sistema de pruebas de calidad y pruebas de circuito cerrado en hardware real:
 
 ```bash
-# 🚀 Ejecutar la suite completa (38 pruebas unitarias y E2E en ~3.5s):
+# 🚀 Ejecutar la suite completa (76 pruebas unitarias y E2E):
 python tests/run_all_tests.py
 
 # 🔊 Ejecutar incluyendo prueba de audio real en hardware (Kokoro ONNX -> Faster-Whisper CUDA Loopback):
@@ -258,10 +258,16 @@ python tests/benchmark_full_calibration_suite.py
 ```
 
 ### Resumen de Suites en `tests/`:
+* `tests/test_conversation_history.py`: CRUD de sesiones, auto-titulado inteligente con LLaMA 3.2 y endpoints REST.
+* `tests/test_synchronization_and_timing.py`: Margen de tokens, sincronización de voz continua y contratos de turno cliente-servidor.
+* `tests/test_ui_redesign.py`: Controles minimalistas, modal desacoplado de audio, popovers y soporte de 8 idiomas.
 * `tests/test_e2e_pipeline.py`: Valida persistencia SQLite, tools locales, Hybrid RAG, chunker gapless y blends de voz.
 * `tests/test_tools_memory.py`: Pruebas exhaustivas de intención y latencia de tools (hora, notas, vocabulario, apps, web search, speed control).
 * `tests/test_chunker.py`: Verificación matemática del streaming continuo sin silencios artificiales.
 * `tests/test_sanitization.py`: Sanitización de texto para síntesis limpia sin emojis ni asteriscos.
+* `tests/test_custom_tools_and_personas.py`: Validación de plugins modulares de herramientas y prompts de personalidades.
+* `tests/test_humanization_and_vad.py`: Micro-inhalaciones sutiles, muletillas conversacionales y filtros VAD de voz.
+* `tests/test_agensi_skills_e2e.py`: Validación de empaquetado y especificaciones AGY para habilidades de voz.
 * `tests/test_live_models_e2e.py`: Prueba de circuito cerrado de audio real (síntesis de audio con Dora y transcripción con Faster-Whisper CUDA).
 * `tests/benchmark_full_calibration_suite.py`: Telemetría en vivo por WebSocket de TTFT, TTFA, RTF y GPU clocks.
 
@@ -403,7 +409,7 @@ docker compose up --build
 │       ├── visualizer.js     # Renderizador de osciloscopio en tiempo real
 │       └── wav-encoder.js    # Codificador cliente PCM a WAV 16kHz
 ├── tests/
-│   ├── run_all_tests.py      # Quality Gate principal (38 tests automatizados)
+│   ├── run_all_tests.py      # Quality Gate principal (76 tests automatizados)
 │   ├── benchmark_full_calibration_suite.py  # Benchmark E2E en vivo con telemetría WSS
 │   ├── test_e2e_pipeline.py  # Pruebas integrales de ciclo de vida completo
 │   ├── test_tools_memory.py  # Pruebas de herramientas y persistencia

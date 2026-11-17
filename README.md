@@ -12,7 +12,7 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Llama_3.2_3B-black.svg)](https://ollama.com/)
 [![Kokoro ONNX](https://img.shields.io/badge/Kokoro--TTS-82M_ONNX-FF6F00.svg)](https://github.com/thewh1teagle/kokoro-onnx)
 [![PWA](https://img.shields.io/badge/PWA-Mobile_Ready-purple.svg)](https://web.dev/progressive-web-apps/)
-[![Tests Passing](https://img.shields.io/badge/Quality_Gate-53%2F53_Passing-brightgreen.svg)](tests/run_all_tests.py)
+[![Tests Passing](https://img.shields.io/badge/Quality_Gate-76%2F76_Passing-brightgreen.svg)](tests/run_all_tests.py)
 [![CI Quality Gate](https://img.shields.io/github/actions/workflow/status/cristianhar/realtime-voice-assistant-local/ci.yml?branch=main&label=CI%20Quality%20Gate)](https://github.com/cristianhar/realtime-voice-assistant-local/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -306,7 +306,7 @@ The core architecture is decoupled into reusable modules that can be packaged an
 The project enforces strict automated testing and hardware loopback validation:
 
 ```bash
-# 🚀 Run the standard test suite (38 unit and E2E tests in ~3.5s):
+# 🚀 Run the standard test suite (76 unit and E2E tests):
 python tests/run_all_tests.py
 
 # 🔊 Run with real hardware audio loopback (Kokoro ONNX -> Faster-Whisper CUDA):
@@ -317,10 +317,16 @@ python tests/benchmark_full_calibration_suite.py
 ```
 
 ### Test Suites in `tests/`:
+* `tests/test_conversation_history.py`: Conversation sessions CRUD, auto-titling with LLaMA 3.2, and REST endpoints.
+* `tests/test_synchronization_and_timing.py`: Token streaming limits, gapless audio timeline, and client-server turn sync contracts.
+* `tests/test_ui_redesign.py`: Minimalist controls, decoupled audio settings modal, system popovers, and 8-language i18n.
 * `tests/test_e2e_pipeline.py`: Validates SQLite persistence, local tools, Hybrid RAG, gapless chunker, and voice blends.
 * `tests/test_tools_memory.py`: Intent matching, execution latency, web search, and dynamic speed control tools.
 * `tests/test_chunker.py`: Mathematical sentence and clause splitting without artificial silence gaps.
 * `tests/test_sanitization.py`: Text sanitization, accent preservation, and phonetic cleaning.
+* `tests/test_custom_tools_and_personas.py`: Validation of custom tool plugins and persona prompts.
+* `tests/test_humanization_and_vad.py`: Breath intake, fillers, and voice activity detection tests.
+* `tests/test_agensi_skills_e2e.py`: End-to-end packaging and specification compliance for AGY skills.
 * `tests/test_live_models_e2e.py`: Hardware loopback test: synthesizes audio with Kokoro and transcribes with Faster-Whisper CUDA.
 * `tests/benchmark_full_calibration_suite.py`: Real-time WebSocket telemetries of TTFT, TTFA, RTF, and GPU clock speeds.
 
@@ -403,7 +409,7 @@ docker compose up --build
 │       ├── visualizer.js     # Real-time oscilloscope audio canvas renderer
 │       └── wav-encoder.js    # Client-side Float32 PCM to 16kHz WAV blob encoder
 ├── tests/
-│   ├── run_all_tests.py      # Automated Quality Gate runner (38 tests)
+│   ├── run_all_tests.py      # Automated Quality Gate runner (76 tests)
 │   ├── benchmark_full_calibration_suite.py  # Live E2E WebSocket benchmark
 │   ├── test_e2e_pipeline.py  # Full lifecycle conversational tests
 │   ├── test_tools_memory.py  # Zero-latency tool intent and latency tests
