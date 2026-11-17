@@ -69,4 +69,6 @@ When the client-side VAD detects incoming user speech while AI audio is actively
 1. **Always use 16kHz Mono PCM**: Whisper and local STT models expect single-channel 16,000 Hz audio. Downsampling in the browser prevents unnecessary network transfer and server-side resamplers.
 2. **Sequential Audio Buffer Queue**: Never play streaming audio chunks simultaneously. Maintain a strictly ordered queue where chunk `N+1` plays precisely at `N.startTime + N.duration`.
 3. **Double-Barrier Interruption**: Cut audio client-side first (<10ms perceived latency), then inform the server. Never wait for a server round-trip before silencing local speakers.
+4. **Non-Blocking WebSocket Receiver**: Never await LLM streams or TTS synthesis inside the main `while True: await websocket.receive_json()` loop. Delegate turn execution to an independent `asyncio.Task` so the socket can receive `{"type": "interrupt"}` frames at any millisecond without TCP buffering delay.
+5. **Context Truncation (`conversation.item.truncate`)**: When interrupted, truncate the assistant's utterance in conversation history and persistent database to only the sentences physically spoken before the cut (`"..." [interrumpido]`), allowing the next LLM turn to naturally adapt to the interruption.
 
